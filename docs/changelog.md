@@ -73,9 +73,8 @@ configuration estate, and the documentation set that ties them together.
   3.12, and the Terraform gates, all credential-free and read-only.
 - The unittest suite under `tests/` against the canned fixtures
   (`fleet-inventory.json`, `compliance-reports.json`, `state-export.json`,
-  `live-describe.json`) and the Makefile target set (`venv`, `install`,
-  `test`, `lint`, `fmt`, `tf-validate`, `scan`, `report`, `patch-scan`,
-  `snapshot`, `ci`).
+  `live-describe.json`) and the Makefile targets `venv`, `install`, `test`,
+  `lint`, `fmt`, `tf-validate`, `scan`, `report`, `patch-scan` and `ci`.
 - The documentation set: `README.md`, `ARCHITECTURE.md`, `INSTALL.md`,
   `EOL-REMEDIATION-PROGRAM.md`, `OPERATIONS.md`, `UPGRADE-RUNBOOKS.md` (the
   six runbooks: the image migration, the RDS minor, the RDS major by

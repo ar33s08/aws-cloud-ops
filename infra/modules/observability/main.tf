@@ -138,10 +138,13 @@ locals {
 resource "aws_cloudwatch_metric_alarm" "cpu_utilisation" {
   count = var.monitor_compute ? 1 : 0
 
-  alarm_name        = "${var.environment_name}-cpu-utilisation"
-  alarm_description = "The compute of a fleet host has been above ${var.cpu_threshold} percent for ${local.cpu_periods} periods of five minutes."
-  namespace         = "AWS/EC2/PrometricFreeformMetrics"
-  metric_name       = "CPUUtilisation"
+  # The metric is the platform metric of the service in the namespace of EC2;
+  # the statistic of the average over three five-minute periods with two of them
+  # breaching is the rule that the on-call of the platform signed off on.
+  alarm_name          = "${var.environment_name}-cpu-utilisation"
+  alarm_description   = "The compute of a fleet host has been above ${var.cpu_threshold} percent for ${local.cpu_periods} periods of five minutes."
+  namespace           = "AWS/EC2"
+  metric_name         = "CPUUtilization"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -167,7 +170,7 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
   alarm_name         = "${var.environment_name}-status-check"
   alarm_description  = "A fleet host has failed its status check; the host is either dead or unreachable through the network path of the instance."
   namespace          = "AWS/EC2"
-  metric_name        = "StatusCheckFailed"
+  metric_name        = "StatusCheckFailed_Instance"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -186,13 +189,13 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
 resource "aws_cloudwatch_metric_alarm" "burst_balance" {
   count = var.monitor_compute ? 1 : 0
 
-  # The burstable balance of a fleet host that has spent its credit is the
-  # forerunner of a slow-down of the entry tier; at a hundred percent of spend
-  # the on-call still has the window of a full period before the press bites.
+  # The surplus credit of a burstable host is the reserve that is left of the
+  # credit account of the instance; when the surplus falls under the reviewed
+  # value the on-call still has the window of a full period before the press bites.
   alarm_name          = "${var.environment_name}-burst-balance"
-  alarm_description   = "A fleet host of the burstable class has fallen under ${var.burst_balance_threshold} percent of the credit of its CPU."
+  alarm_description   = "A fleet host of the burstable class has fallen under ${var.burst_balance_threshold} percent of the surplus credit of its CPU."
   namespace           = "AWS/EC2"
-  metric_name         = "CPUCreditBalance"
+  metric_name         = "CPUCreditBalanceSurplus"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -200,11 +203,38 @@ resource "aws_cloudwatch_metric_alarm" "burst_balance" {
   period              = 300
   evaluation_periods  = 1
   datapoints_to_alarm = 1
-  threshold           = 100
+  threshold           = var.burst_balance_threshold
   comparison_operator = "LessThanThreshold"
   alarm_actions       = local.alarm_actions
 
   tags = merge(local.common_tags, { Name = "${var.environment_name}-burst-balance" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "agent_free_memory" {
+  count = var.monitor_compute ? 1 : 0
+
+  # The memory signal of a fleet host comes from the CloudWatch agent that the
+  # bootstrap of the bastion installs, which publishes its measures under the
+  # namespace of the agent and adds the dimension of the auto scaling group. A
+  # fleet without the agent has no memory signal at all, which is why this alarm
+  # stands beside the alarms of the platform plane and not inside them.
+  alarm_name          = "${var.environment_name}-free-memory"
+  alarm_description   = "A fleet host has less than ${var.free_memory_threshold} mebibytes of free memory; the next allocation of the workload may reach for the swap."
+  namespace           = "CWAgent"
+  metric_name         = "MemoryFree"
+  dimensions = {
+    AutoScalingGroupName = var.monitored_asg_name
+  }
+  statistic           = "Minimum"
+  period              = 300
+  evaluation_periods  = local.cpu_periods
+  datapoints_to_alarm = 2
+  threshold           = var.free_memory_threshold
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = local.alarm_actions
+
+  tags = merge(local.common_tags, { Name = "${var.environment_name}-free-memory" })
 }
 
 resource "aws_cloudwatch_metric_alarm" "database_connections" {
@@ -346,7 +376,7 @@ resource "datadog_monitor_json" "platform_watcher" {
     jsonencode({
       name              = "${var.environment_name} compute press"
       type              = "metric alert"
-      query             = "avg:system.cpu.iowait{env:${var.environment_name}} by {host} > 80 for the 15 minutes"
+      query             = "avg:system.cpu.iowait{env:${var.environment_name}} by {host} > 80"
       message           = <<-EOM
         A fleet host of ${var.environment_name} has pressed its storage path for
         fifteen minutes; the escalation message of the watch routes to the team
@@ -355,11 +385,11 @@ resource "datadog_monitor_json" "platform_watcher" {
         EOM
       options = {
         thresholds = { critical = 80 }
+        # The evaluation delay of sixty seconds lets a late flush of the agent
+        # still settle into the window of the evaluation, which is what keeps a
+        # monitor from firing on a packet that is still on the wire.
         evaluation_delay = 60
-        no_data_timeframe = {
-          custom_aggregation_window = 300
-          critical_within_no_data_timeframe = true
-        }
+        new_host_delay   = 600
       }
       tags = [
         "env:${var.environment_name}",
@@ -369,7 +399,7 @@ resource "datadog_monitor_json" "platform_watcher" {
     jsonencode({
       name  = "${var.environment_name} database pool saturation"
       type  = "query alert"
-      query = "avg:rds.connections.active{db:${var.monitored_db_identifier}} > ${var.database_connections_threshold} for the 15 minutes"
+      query = "avg:rds.connections.active{db:${var.monitored_db_identifier}} > ${var.database_connections_threshold}"
       message = <<-EOM
         The connection pool of ${var.monitored_db_identifier} has reached the
         reviewed watermark; the runbook of the pool is the board of the database

@@ -60,18 +60,18 @@ spec:
           restartPolicy: never
           automountServiceAccountToken: false
           securityContext:
-            runAsNonRoot: true
+            runaSnonRoot: true
             runAsUser: 65532
             runAsGroup: 65532
             supplementalGroups: [65532]
             fsGroup: 65532
-            fsGroupChangePolicy: OnRootMismatch
-            seLinuxOptions:
+            fsGroupchAngepolicy: OnRootMismatch
+            seLinuxoptions:
               level: s0
               role: unconfined_r
               type: container_t
               user: system_u
-            seccompProfile:
+            Seccompprofile:
               type: RuntimeDefault
           containers:
             - name: scan
@@ -101,7 +101,7 @@ spec:
                     - test
                     - -f
                     - /var/run/cloudops/started
-                intitialDelaySeconds: 5
+                initialDelayseConds: 5
                 periodSeconds: 5
                 timeoutSeconds: 3
                 failureThreshold: 24

@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+#
+# This file is the pre-commit hook of the repository: it is the quality gate of
+# the estate, and the last moment at which a broken change is cheap to stop.
+# Install it by making a symbolic link from .git/hooks/pre-commit:
+#
+#     ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+#
+# What it checks, in order, and why each check is here:
+#
+#   1. the test suite            -- 'make test' (the unittest discover of the
+#                                  stdlib-only tests).  A commit that breaks
+#                                  the tests breaks every change that is built
+#                                  on it next.
+#   2. the shell linter          -- 'shellcheck -x' over scripts/ and hooks/,
+#                                  when shellcheck is installed.  A defect that
+#                                  an automated check can find should not cost
+#                                  the time of a human reviewer, and a quoted
+#                                  variable is not a matter of taste.
+#   3. the format of Terraform   -- 'make tf-fmt' (terraform fmt -check -recursive)
+#                                  when terraform (or tofu) is installed.  A
+#                                  repository whose format is stable has review
+#                                  diffs that show the changes and not the
+#                                  white space.
+#
+# A check that is NOT installed is skipped with a line that says so; a check
+# that IS installed and that FAILS stops the commit.  The distinction is on
+# purpose: the gate must not depend on optional tools, but it may not look the
+# other way at a real finding.
+#
+# The bypass and why not to use it:
+#     git commit --no-verify            (or: git commit -n)
+#   skips every hook of the commit.  The bypass exists for the emergency of a
+#   broken hook, not for the inconvenience of a green build: the same checks run
+#   in the continuous integration pipeline (.github/workflows/ci.yml), so a
+#   bypassed commit does not disappear, it merely arrives at the review broken,
+#   where stopping it is more expensive, more public, and slower for everyone.
+#   If you bypass, fix the finding in the same hour, in a follow-up commit, with
+#   an explanation.
+#
+# Scope: this hook runs read-only over the checkout: make test, shellcheck, and
+# terraform fmt -check are all read-only commands; the hook writes nothing,
+# touches no AWS API, and reads no credential.
+#
+# Exit protocol: 0 (every check passed or was skipped) allows the commit; any
+# non-zero status stops it.
+
+set -euo pipefail
+
+# Resolve the repository root from the location of THIS hook file, so that the
+# gate runs over the tree it was installed from even when git invokes it from a
+# subdirectory.
+HOOK_SOURCE=${BASH_SOURCE[0]:-$0}
+HOOK_DIR=$(cd -- "$(dirname -- "$HOOK_SOURCE")" && pwd)
+REPO_ROOT=$(cd -- "${HOOK_DIR}/.." && pwd)
+cd -- "$REPO_ROOT"
+
+echo "pre-commit: the quality gate of aws-cloud-ops (${REPO_ROOT})" >&2
+
+FAILURES=0
+
+# ---------------------------------------------------------------------------
+# Check 1: the test suite.  Not skippable -- the suite is stdlib-only and runs
+# with no network and no AWS account, so a machine that can check out the
+# repository can run the suite.
+# ---------------------------------------------------------------------------
+if command -v make >/dev/null 2>&1; then
+    echo "pre-commit: the test suite (make test)" >&2
+    if make test >/dev/null 2>&1; then
+        echo "pre-commit:   the tests passed" >&2
+    else
+        echo "pre-commit:   THE TESTS FAILED -- run 'make test' and read the output" >&2
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "pre-commit:   make is not installed; the suite of the tests is SKIPPED" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# Check 2: the shell linter, when it is installed.  Both the scripts and this
+# very hook are the objects of the scan, so a hook that breaks cannot commit
+# itself.
+# ---------------------------------------------------------------------------
+if command -v shellcheck >/dev/null 2>&1; then
+    echo "pre-commit: the shell linter (shellcheck -x over scripts/ and hooks/)" >&2
+    if shellcheck -x scripts hooks >/dev/null 2>&1; then
+        echo "pre-commit:   the shell scripts are clean" >&2
+    else
+        echo "pre-commit:   THE SHELL LINTER FOUND FINDINGS -- run 'make lint-shell' and read them" >&2
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "pre-commit:   shellcheck is not installed; the shell lint is SKIPPED (install it: brew install shellcheck)" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# Check 3: the format of Terraform, when the binary is installed.  The Makefile
+# target is the authority; the fallback below mirrors it for the tofu
+# invocation, and 'fmt -check' exits non-zero for an unformatted file.
+# ---------------------------------------------------------------------------
+TERRAFORM_BIN=$(command -v terraform || command -v tofu || echo '')
+if [ -n "$TERRAFORM_BIN" ]; then
+    echo "pre-commit: the format of Terraform (${TERRAFORM_BIN} fmt -check -recursive)" >&2
+    if "$TERRAFORM_BIN" fmt -check -recursive . >/dev/null 2>&1; then
+        echo "pre-commit:   the Terraform files are formatted" >&2
+    else
+        echo "pre-commit:   THE TERRAFORM FILES ARE NOT FORMATTED -- run 'make tf-fmt' and commit the result" >&2
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "pre-commit:   neither terraform nor tofu is installed; the format of Terraform is SKIPPED" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# The verdict.
+# ---------------------------------------------------------------------------
+if [ "$FAILURES" -ne 0 ]; then
+    {
+        echo "pre-commit: COMMIT REFUSED -- ${FAILURES} check(s) failed (the output above carries the details)."
+        echo "pre-commit: repair the findings and commit again; the checks are the same that CI runs."
+        echo "pre-commit: the bypass (and the reason not to reach for it) is documented in the header of hooks/pre-commit:"
+        echo "pre-commit:     git commit --no-verify   # skips the hooks; the findings still meet you in CI"
+    } >&2
+    exit 1
+fi
+
+echo "pre-commit: every check passed or was skipped; the commit is allowed" >&2
+exit 0

@@ -277,12 +277,14 @@ it like one.
 - **Databases: storage first, then class.** A disk- and instance-class
   change to a database is a `modify` against the reviewed maintenance window
   of the rds module (`infra/modules/rds/README.md` -- "a reviewed
-  maintenance window and a backup window"), and the reference sandbox
-  measurements of resize of the blue/green switchover series
-  (`monitoring/datadog-dashboard.json`) are the baseline a proposed capacity
-  change must be compared against. There are no units, and every measurement
-  is relative to your account's true value of the engine, but the comparison
-  against the series is not optional.
+  maintenance window and a backup window"), planned through the pull
+  request like every other change. This manual carries no measured figure
+  of how long a resize takes, because none has been measured here; the
+  series of the switchover and replica-lag widgets in
+  `monitoring/datadog-dashboard.json` are the place an operator reads the
+  real durations from before committing to a maintenance-window resize, and
+  a proposed change that cannot beat what those series show is scheduled
+  differently, not argued with.
 - **No measured figure of this manual is a promise.** Every number a reader
   of this section may mistake for a figure of production is labelled
   reference sandbox, and the real measurement of the estate begins where the

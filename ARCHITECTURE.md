@@ -205,14 +205,14 @@ describes a real design choice of the modules, not a slogan.)
 
 The modules parameterise the cost knobs (instance classes, desired
 capacities, the number of NAT gateways, the retention periods, the
-performance-insensus option) rather than hard-coding them. The cost of the
+performance-insights option) rather than hard-coding them. The cost of the
 estate is the product of those knobs and the published price list of the
-region; `make cost` in the Makefile runs `aws pricing get-products`
-against the pricing API for the instance types of the current
-configuration and prints the modelled monthly figures, in the currency of
-USD, exclusive of taxes, with the data transfer fees of the inter-region
-traffic included as configured. Do not commit the modelled figures to this
-file; run the command and read them from the terminal.
+region; the reference of the current prices is the pricing page of the
+service, and the command-line way to ask for them is
+`aws pricing get-products --service Amazon Elastic Compute Cloud`
+(the output is a stream of JSON price records). Do not commit the modelled
+figures to this file; the price list of the region of the estate is the
+authority, and the bill of the account is the record.
 
 ## 10. What this architecture does not include
 

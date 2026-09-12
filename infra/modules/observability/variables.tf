@@ -120,6 +120,17 @@ variable "database_connections_threshold" {
   default     = 200
 }
 
+variable "free_memory_threshold" {
+  description = "The mebibytes of the free memory of a fleet host below which the alarm of the memory of the agent fires; the reviewed baseline of the platform is two hundred fifty-six mebibytes of a host of the entry tier."
+  type        = number
+  default     = 256
+
+  validation {
+    condition     = var.free_memory_threshold >= 64
+    error_message = "free_memory_threshold must be at least 64 mebibytes, because an alarm below the floor of the agent itself reads as a fault of the agent and not of the host."
+  }
+}
+
 variable "freeable_memory_threshold" {
   description = "The mebibytes of freeable memory of the database below which the alarm of the memory of the engine fires; the reviewed baseline of the platform is two hundred fifty-six mebibytes."
   type        = number
