@@ -7,7 +7,7 @@ patch-schedule.sh
 .RB [ \|\-f\ |\|\-\-file ]
 .IR "definition-json"
 .RB [ \|\-r\  \fIREGION\/\fP | \fB\-\-region\fP\  \fIREGION\/\fP ]
-.RB [ \fB\-\-floor\fP\  \fISEVERITy\/\fP ]
+.RB [ \fB\-\-floor\fP\  \fISEVERITY\/\fP ]
 .RB [ \fB\-\-max-age\fP\  \fIN\/\fP ]
 .RB [ \fB\-\-budget\fP\  \fISECONDS\/\fP ]
 .RB [ \fB\-\-poll-interval\fP\  \fISECONDS\/\fP ]

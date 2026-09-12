@@ -35,7 +35,7 @@ install: venv  # install the package (editable) and its dependencies
 test:  # run the test suite (stdlib-only; no network, no AWS credentials needed)
 	$(PYTEST) discover -s tests -p 'test_*.py' -v
 
-lint: lint-shell lint-python  # run all linters that are installed
+lint: lint-shell lint-python lint-docs  # run all linters that are installed
 lint-shell:
 	$(if $(SHELLCHECK), find scripts hooks -type f -name '*.sh' -exec $(SHELLCHECK) -x {} +, \
 	  echo "shellcheck not installed; skipping" )
@@ -48,6 +48,9 @@ fmt-python:
 tf-fmt:
 	$(if $(TERRAFORM), $(TERRAFORM) fmt -recursive -check . || $(TERRAFORM) fmt -recursive ., \
 	  echo "terraform not installed; skipping")
+
+lint-docs:  # every command a reader can copy out of the documentation must exist
+	$(PYTHON) tools/check-doc-coherence.py
 
 tf-validate:  # validate the Terraform configurations (init first, backend disabled)
 	$(if $(TERRAFORM), \

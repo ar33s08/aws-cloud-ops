@@ -31,7 +31,10 @@ output "replica_addresses" {
 
 output "master_secret_arn" {
   description = "The ARN of the Secrets Manager secret that holds the master password. The secret itself is deliberately not exported, because its value must never appear in state output."
-  value       = aws_db_instance.this.master_user_secret[0].arn
+  # The attribute of the provider that names the managed master secret carries
+  # the full ARN of the secret; the resource of the secret manager of the
+  # service is then addressed by that ARN and by nothing else.
+  value = aws_db_instance.this.master_user_secret[0].secret_arn
 }
 
 output "parameter_group_name" {

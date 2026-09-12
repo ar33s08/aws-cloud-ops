@@ -8,18 +8,18 @@ variable "name_prefix" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,30}$", var.name_prefix))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.name_prefix))
     error_message = "name_prefix must start with a lowercase letter and contain only lowercase letters, digits or hyphens (maximum 31 characters)."
   }
 }
 
 variable "vpc_cidr" {
-  description = "The IPv4 CIDR block of the VPC. A /2x block (for example 10.2x.0.0/16) leaves room for the private and isolated subnets that this module carves out of it."
+  description = "The IPv4 CIDR block of the VPC. A /16 block (for example 10.20.0.0/16) leaves room for the private and isolated subnets that this module carves out of it."
   type        = string
 
   validation {
     condition     = can(cidrsubnets(var.vpc_cidr, 8, 0))
-    error_message = "vpc_cidr must be a valid IPv4 CIDR block that is at most a /2x so that the subnet plan still has room (for example 10.2x.0.0/16)."
+    error_message = "vpc_cidr must be a valid IPv4 CIDR block that is at most a /24 so that the subnet plan of the module still has room (for example 10.20.0.0/16)."
   }
 }
 
@@ -62,7 +62,7 @@ variable "logs_kms_key_arn" {
   default     = null
 
   validation {
-    condition     = var.logs_kms_key_arn == null ? true : can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:key/[0-9a-f-]+$", var.logs_kms_key_arn))
+    condition     = var.logs_kms_key_arn == null ? true : can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:key/[0-9a-f-]+$", var.logs_kms_key_arn))
     error_message = "logs_kms_key_arn must be a full KMS key ARN of the form arn:aws:kms:REGION:ACCOUNT_ID:key/UUID."
   }
 }

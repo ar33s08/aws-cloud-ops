@@ -8,7 +8,7 @@ variable "replication_group_id" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,30}[a-z0-9]$", var.replication_group_id))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,30}[a-z0-9]$", var.replication_group_id))
     error_message = "replication_group_id must be 3 to 32 characters of lowercase letters, digits or hyphens, starting with a letter and ending with an alphanumeric."
   }
 }
@@ -35,7 +35,7 @@ variable "engine_version" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.engine_version))
+    condition     = can(regex("^[0-9]+[.][0-9]+[.][0-9]+$", var.engine_version))
     error_message = "engine_version must be a dotted version of three numeric components, for example 7.1.0."
   }
 }
@@ -45,7 +45,7 @@ variable "node_type" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^cache\\.[a-z0-9]+\\.[a-z0-9]+$", var.node_type))
+    condition     = can(regex("^cache[.][a-z0-9]+[.][a-z0-9]+$", var.node_type))
     error_message = "node_type must look like cache.r6g.xlarge."
   }
 }
@@ -95,7 +95,7 @@ variable "parameter_group_family" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^(redis|valkey)-[0-9]+\\.[0-9]+$", var.parameter_group_family))
+    condition     = can(regex("^(redis|valkey)-[0-9]+[.][0-9]+$", var.parameter_group_family))
     error_message = "parameter_group_family must look like redis-7.1 or valkey-8.0, matching the major of engine_version."
   }
 }
@@ -139,7 +139,7 @@ variable "snapshot_window" {
   default     = "16:00-17:00"
 
   validation {
-    condition     = can(regexmatch("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", var.snapshot_window))
+    condition     = can(regex("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", var.snapshot_window))
     error_message = "snapshot_window must look like 16:00-17:00 with both times written in Coordinated Universal Time."
   }
 }
@@ -150,7 +150,7 @@ variable "maintenance_window" {
   default     = "sat:03:00-sat:04:00"
 
   validation {
-    condition     = can(regexmatch("^(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    condition     = can(regex("^(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
     error_message = "maintenance_window must look like sat:03:00-sat:04:00."
   }
 }
@@ -171,7 +171,7 @@ variable "kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.kms_key_arn))
     error_message = "kms_key_arn must be a full KMS key ARN or key alias ARN of the form arn:aws:kms:REGION:ACCOUNT_ID:key/UUID or .../alias/NAME."
   }
 }
@@ -181,7 +181,7 @@ variable "private_subnet_ids" {
   type        = list(string)
 
   validation {
-    condition     = length(var.private_subnet_ids) >= 1 && alltrue([for id in var.private_subnet_ids : can(regexmatch("^subnet-[0-9a-f]{8,17}$", id))])
+    condition     = length(var.private_subnet_ids) >= 1 && alltrue([for id in var.private_subnet_ids : can(regex("^subnet-[0-9a-f]{8,17}$", id))])
     error_message = "private_subnet_ids must be a non-empty list of subnet ids of the form subnet-0123456789abcdef0."
   }
 }
@@ -191,7 +191,7 @@ variable "cache_security_group_ids" {
   type        = list(string)
 
   validation {
-    condition     = length(var.cache_security_group_ids) >= 1 && alltrue([for id in var.cache_security_group_ids : can(regexmatch("^sg-[0-9a-f]{8,17}$", id))])
+    condition     = length(var.cache_security_group_ids) >= 1 && alltrue([for id in var.cache_security_group_ids : can(regex("^sg-[0-9a-f]{8,17}$", id))])
     error_message = "cache_security_group_ids must be a non-empty list of security group ids of the form sg-0123456789abcdef0."
   }
 }

@@ -62,6 +62,8 @@ TARGETS=''                    # comma-separated instance ids, or empty
 TAG_LIST=''                   # SSM tag selector, or empty
 PARSING_PARAMETERS=''         # the raw 'key=value key2=value2' string
 DOCUMENT_ID='AWS-RunShellScript'
+# The document version string is a literal: the service understands the dollar
+# form below as 'the latest version', so the shell must not expand it.
 DOCUMENT_VERSION='$DEFAULT'   # the literal string SSM understands as 'latest'
 COMMAND_FILE=''               # path whose content becomes the runcommand value
 TIMEOUT_SECONDS=600           # the per-invocation execution timeout (SSM side)

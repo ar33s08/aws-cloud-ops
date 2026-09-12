@@ -11,8 +11,8 @@ The package is organised like a well-structured manual of the estate:
 * `cloudops.drift`     — detection of differences between the live inventory
   and the state file of the estate;
 * `cloudops.report`    — representation of the results (table, csv, json, md);
-* `cloudops.cli`       — the command-line interface (init, scan, report,
-  drift, patch-queue, snapshot, upgrade, version).
+* `cloudops.cli`       — the command-line interface (scan, patch-queue,
+  baseline-list, drift, snapshot, plus --version and --help).
 
 All modules of the core package use only the Python standard library.
 `import boto3` happens only in `cloudops.aws_live`, and only when the user

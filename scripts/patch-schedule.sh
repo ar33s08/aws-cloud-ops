@@ -156,7 +156,7 @@ load_ring_schedule() {
     # one ring, printed as 'NAME|SCHEDULE|CUTOFF_HOURS'.
     # Usage: load_ring_schedule FILE RING_NAME
     local file=$1 ring=$2
-    CLOUDOPS_REPO_ROOT=$REPO_ROOT _CLOUDOPS_BASELINE_FILE=$file _CLOUDOPS_RING=$ring \
+    _CLOUDOPS_REPO_ROOT=$REPO_ROOT _CLOUDOPS_BASELINE_FILE=$file _CLOUDOPS_RING=$ring \
         "$PYTHON_BIN" - <<'PYTHON_EOF'
 import os
 import sys

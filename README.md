@@ -50,7 +50,8 @@ is *not* building features. It is keeping the estate healthy:
   and the configuration (the `.tf` files) then differ. `cloudops drift` finds the difference and
   `atlantis apply` resolves it, through a pull request, with a reviewer.
 * **Automation.** Manual toil is the enemy. Every recipe in this repository is idempotent,
-  loggable, dry-runnable, and can be scheduled (`make cron`, AWS EventBridge, SSM run command).
+  loggable, dry-runnable, and schedulable: `make scan`, `make patch-scan`, and
+  `make report` are the routines a scheduler of the platform runs on a timer.
 
 ## Quick start (installation)
 
@@ -129,8 +130,8 @@ mistakes in this documentation, please report them as an issue — patches welco
   MySQL, MariaDB, PostgreSQL, Oracle), ElastiCache (Redis, Valkey), and EKS. Reports the status
   (`OK`, `EARL`, `EOL`, `EOS`, `SEC`) and a recommended action, sorted by severity.
 * **Patch baselines** — patch baseline definitions per instance class (OS class, engine class),
-  AWS Systems Manager (SSM) Patch Group compliant; register patch baselines with
-  `scripts/ssm-patch-baseline-register.sh` and scan compliance with `scripts/patch-compliance-scan.sh`.
+  in the shape the AWS Systems Manager (SSM) Patch Manager accepts; register them with
+  `scripts/patch-baseline-register.sh` and scan compliance with `scripts/patch-compliance-scan.sh`.
 * **Safe upgrades** — snapshot backup first, then minor version upgrade; blue/green for major
   versions, with replication (read replicas), restore from backup, and point-in-time recovery
   (PITR). `scripts/rds-major-upgrade-bluegreen.sh` implements the full sequence; read its header

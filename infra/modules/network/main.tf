@@ -19,15 +19,15 @@ locals {
   # caller controls the width of the topology through az_count: development uses a
   # single Zone, production spreads across three.
   az_list = slice(
-    sort(tolist(data.aws_availability_zones.selected.zones)),
+    sort(tolist(data.aws_availability_zones.selected.names)),
     0,
-    min(var.az_count, length(tolist(data.aws_availability_zones.selected.zones)))
+    min(var.az_count, length(tolist(data.aws_availability_zones.selected.names)))
   )
 
   # cidr_plan pre-computes one subnet CIDR block per position of the topology so
   # that a plan is readable before the VPC exists: positions 0..(n-1) are the
   # private subnets, positions n and n+1 are the two isolated subnets.
-  private_subnet_cidrs = [for index in range(length(local.az_list)) : cidrsubnets(var.vpc_cidr, length(local.az_list) + 2, index)[0]]
+  private_subnet_cidrs  = [for index in range(length(local.az_list)) : cidrsubnets(var.vpc_cidr, length(local.az_list) + 2, index)[0]]
   isolated_subnet_cidrs = [for index in range(2) : cidrsubnets(var.vpc_cidr, length(local.az_list) + 2, length(local.az_list) + index)[0]]
 
   common_tags = merge(
@@ -58,9 +58,9 @@ resource "aws_vpc" "this" {
 resource "aws_subnet" "private" {
   count = length(local.az_list)
 
-  vpc_id              = aws_vpc.this.id
-  cidr_block          = local.private_subnet_cidrs[count.index]
-  availability_zone   = local.az_list[count.index]
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = local.private_subnet_cidrs[count.index]
+  availability_zone       = local.az_list[count.index]
   map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
@@ -72,9 +72,9 @@ resource "aws_subnet" "private" {
 resource "aws_subnet" "isolated" {
   count = length(local.az_list) > 0 ? 2 : 0
 
-  vpc_id              = aws_vpc.this.id
-  cidr_block          = local.isolated_subnet_cidrs[count.index]
-  availability_zone   = local.az_list[count.index % length(local.az_list)]
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = local.isolated_subnet_cidrs[count.index]
+  availability_zone       = local.az_list[count.index % length(local.az_list)]
   map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
@@ -102,10 +102,14 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "connectivity" {
-  allocation_id         = aws_eip.nat.id
-  connectivity_type     = "public"
-  subnet_id             = aws_subnet.isolated[0].id
-  enable_primary_ipv6_outbound = false
+  allocation_id     = aws_eip.nat.id
+  connectivity_type = "public"
+  subnet_id         = aws_subnet.isolated[0].id
+
+  # The estate does not route IPv6 through the gateway of the connectivity: the
+  # address plan of the platform is IPv4, and the provider line pinned here
+  # (5.x) carries no IPv6 outbound knob at all, which this file records rather
+  # than pretends otherwise.
 
   tags = merge(local.common_tags, { Name = "${var.name_prefix}-nat-connectivity" })
 
@@ -125,9 +129,9 @@ resource "aws_route_table" "connectivity" {
 }
 
 resource "aws_route" "connectivity_default" {
-  route_table_id = aws_route_table.connectivity.id
+  route_table_id         = aws_route_table.connectivity.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id     = aws_internet_gateway.connectivity.id
+  gateway_id             = aws_internet_gateway.connectivity.id
 
   # This is the single 0.0.0.0/0 route of the topology: it exists only in the
   # connectivity route table, which is associated only with the subnet that hosts
@@ -156,9 +160,9 @@ resource "aws_route_table_association" "private" {
 }
 
 resource "aws_route" "private_via_nat" {
-  route_table_id = aws_route_table.private.id
+  route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = aws_nat_gateway.connectivity.id
+  nat_gateway_id         = aws_nat_gateway.connectivity.id
 
   depends_on = [aws_nat_gateway.connectivity]
 }
@@ -211,11 +215,11 @@ resource "aws_security_group" "endpoint" {
 resource "aws_vpc_endpoint" "private_dns" {
   for_each = toset(var.endpoint_service_names)
 
-  vpc_id             = aws_vpc.this.id
-  service_name       = each.value
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = aws_subnet.private[*].id
-  security_group_ids = [aws_security_group.endpoint.id]
+  vpc_id              = aws_vpc.this.id
+  service_name        = each.value
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.endpoint.id]
   private_dns_enabled = true
 
   # The endpoint policy pins access to this VPC with the aws:Vpc condition key,
@@ -270,15 +274,15 @@ resource "aws_security_group" "base" {
 # ---------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  name_prefix      = "${var.name_prefix}-flow-logs-"
+  name_prefix       = "${var.name_prefix}-flow-logs-"
   retention_in_days = var.flow_log_retention_days
-  kms_key_id       = var.logs_kms_key_arn
+  kms_key_id        = var.logs_kms_key_arn
 
   tags = merge(local.common_tags, { Name = "${var.name_prefix}-flow-logs" })
 }
 
 resource "aws_iam_role" "flow_logs" {
-  name_prefix        = "${var.name_prefix}-flow-logs-"
+  name_prefix = "${var.name_prefix}-flow-logs-"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -308,9 +312,9 @@ resource "aws_iam_role_policy" "flow_logs" {
         Resource = aws_cloudwatch_log_group.flow_logs.arn
       },
       {
-        Sid      = "PutLogEvents"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "PutLogEvents"
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
@@ -321,7 +325,6 @@ resource "aws_iam_role_policy" "flow_logs" {
 
   # Note: the action set above follows the flow-logs delivery permissions that
   # the service documentation prescribes for the delivering principal.
-  tags = merge(local.common_tags, { Name = "${var.name_prefix}-flow-logs-policy" })
 }
 
 resource "aws_flow_log" "vpc" {

@@ -105,7 +105,11 @@ class Inventory:
 
     hosts: list[Host] = field(default_factory=list)
 
-    def __post_init__(self) -> None:
+    def __init__(self, hosts=None) -> None:
+        # A plain initializer rather than the generated one of a dataclass, for
+        # the same reason the host carries one: the collection validates on
+        # construction, and the owner list arrives as a parameter.
+        self.hosts = list(hosts) if hosts is not None else []
         seen: set[str] = set()
         for host in self.hosts:
             if host.host_id in seen:

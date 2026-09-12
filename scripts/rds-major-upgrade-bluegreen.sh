@@ -79,6 +79,7 @@ DRY_RUN=0
 MAX_LAG_SECONDS=60                # the lag guard threshold for the promotion
 CREATE_TIMEOUT_SECONDS=5400       # an hour and a half: the green build is slow
 SWITCHOVER_TIMEOUT_SECONDS=300    # the service timeout of the switchover itself
+DO_SWITCHOVER=1                   # the promotion phase; --no-switch skips it
 DEPLOYMENT_NAME=''
 SNAPSHOT_ID=''
 POLL_INTERVAL_SECONDS=30
@@ -141,6 +142,8 @@ parse_args() {
             --deployment-name)       [ "$#" -ge 2 ] || usage_error "$1 needs a value"; DEPLOYMENT_NAME=$2; shift 2;;
             --snapshot-id)           [ "$#" -ge 2 ] || usage_error "$1 needs a value"; SNAPSHOT_ID=$2; shift 2;;
             --max-lag)               [ "$#" -ge 2 ] || usage_error "$1 needs a value"; MAX_LAG_SECONDS=$2; shift 2;;
+            --switch|--promote)      DO_SWITCHOVER=1; shift;;
+            --no-promote|--no-switch) DO_SWITCHOVER=0; shift;;
             --create-timeout)        [ "$#" -ge 2 ] || usage_error "$1 needs a value"; CREATE_TIMEOUT_SECONDS=$2; shift 2;;
             --switchover-timeout)    [ "$#" -ge 2 ] || usage_error "$1 needs a value"; SWITCHOVER_TIMEOUT_SECONDS=$2; shift 2;;
             --poll-interval)         [ "$#" -ge 2 ] || usage_error "$1 needs a value"; POLL_INTERVAL_SECONDS=$2; shift 2;;
@@ -382,6 +385,10 @@ main() {
     log info "lag guard passed: the measured replication lag is ${lag}s, within the limit of ${MAX_LAG_SECONDS}s"
 
     # --- step 5: promote the green to the blue (the switch) ----------------------
+    if [ "$DO_SWITCHOVER" -ne 1 ]; then
+        log info "the promotion is held (--no-switch was given): the deployment ${DEPLOYMENT_NAME} is built and AVAILABLE but the green is NOT promoted; production stays on the blue. Re-run without --no-switch to perform the switchover. snapshot: ${SNAPSHOT_ID}"
+        exit 0
+    fi
     retry 3 2 $CMD_RDS_SWITCHOVER_BLUE_GREEN \
         --blue-green-deployment-name "$DEPLOYMENT_NAME" \
         --switchover-timeout "$SWITCHOVER_TIMEOUT_SECONDS" \

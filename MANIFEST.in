@@ -1,0 +1,16 @@
+# The manifest of the source distribution: what a sdist carries when the
+# modern backend builds one. The wheel carries only cloudops and its data
+# (declared through pyproject.toml), while this file governs the completeness
+# of the tarball that pip build produces from an sdist.
+include README.md
+include INSTALL.md
+include LICENSE
+include NOTICE
+include MANIFEST.in
+include setup.py
+recursive-include cloudops *.py
+recursive-include cloudops/data *.json
+graft cloudops/data
+graft tests
+graft data
+recursive-include docs *.md

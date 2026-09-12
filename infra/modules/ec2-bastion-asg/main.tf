@@ -22,12 +22,13 @@ locals {
   # has baked a hardened image passes bastion_ami_id directly and the Parameter
   # Store lookup stays unused, which keeps gold images reproducible without
   # depending on the Region alias catalogue.
-  bastion_ami_id = coalesce([var.bastion_ami_id, nonsensitive(data.aws_ssm_parameter.amazon_linux_2023_ami.value)])
+  bastion_ami_id = coalesce(var.bastion_ami_id, nonsensitive(data.aws_ssm_parameter.amazon_linux_2023_ami.value))
 
   # user_data_payload is the companion bootstrap script that installs the Systems
   # Manager agent and removes SSH as an access path. The path is resolved relative
-  # to this module so that the script stays lintable on its own with shellcheck.
-  user_data_payload = file("${path.module}/../../scripts/bastion-userdata.sh")
+  # to this module so that the script stays lintable on its own with shellcheck;
+  # the script sits at the root of the repository, three levels above the module.
+  user_data_payload = file("${path.module}/../../../scripts/bastion-userdata.sh")
 
   common_tags = merge(
     {
@@ -43,8 +44,8 @@ locals {
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_role" "ssm_instance" {
-  name_prefix        = "${var.name_prefix}-bastion-ssm-"
-  description        = "Instance role for the SSM-only bastion fleet of ${var.name_prefix}."
+  name_prefix          = "${var.name_prefix}-bastion-ssm-"
+  description          = "Instance role for the SSM-only bastion fleet of ${var.name_prefix}."
   max_session_duration = 3600
 
   # The trust policy binds the delegation to the EC2 service of this very account,
@@ -92,7 +93,7 @@ resource "aws_security_group" "bastion" {
   }
 
   tags = merge(local.common_tags, {
-    Name            = "${var.name_prefix}-bastion-sg"
+    Name           = "${var.name_prefix}-bastion-sg"
     "security:ssh" = "disabled-by-design"
   })
 }
@@ -122,9 +123,9 @@ resource "aws_launch_template" "bastion" {
     http_protocol_ipv6          = "disabled"
   }
 
-  ebs_optimized            = true
-  disable_api_termination  = true
-  disable_api_stop         = true
+  ebs_optimized           = true
+  disable_api_termination = true
+  disable_api_stop        = true
 
   # The root volume is the only device of the fleet and it is encrypted with the
   # customer managed key of the platform, never left unencrypted by default.
@@ -171,7 +172,7 @@ resource "aws_launch_template" "bastion" {
     # A new version of the template is created for every change, so a running
     # fleet is only rotated through the explicit instance refresh below.
     create_before_destroy = false
-    ignore_changes        = ["latest_version", "default_version"]
+    ignore_changes        = [default_version]
   }
 }
 
@@ -182,9 +183,9 @@ resource "aws_launch_template" "bastion" {
 resource "aws_autoscaling_group" "bastion" {
   name_prefix = "${var.name_prefix}-bastion-"
 
-  min_size              = var.min_size
-  max_size              = var.max_size
-  desired_capacity      = var.desired_capacity
+  min_size                = var.min_size
+  max_size                = var.max_size
+  desired_capacity        = var.desired_capacity
   default_instance_warmup = var.warmup_seconds
 
   # The health check grace period gives a freshly launched instance enough time

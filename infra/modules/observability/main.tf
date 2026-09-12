@@ -10,6 +10,17 @@
 # JSON of the board can be reviewed and edited as an artefact of its own instead
 # of being duplicated inside a Terraform string.
 
+
+data "aws_caller_identity" "current" {
+  # The identity of the caller that plans this configuration: the account
+  # that owns the alarms, bound into the publish policy of the topic so that only the
+  # services of this account may publish into it.
+}
+
+data "aws_partition" "current" {
+  # The partition of the cloud of this Region, so that the resource ARNs of the
+  # topic policy are written for the partition the estate actually runs in.
+}
 locals {
   # alarm_namespace keeps every custom metric of the estate under one namespace,
   # which is what lets a single alarm query of the toolkit find all of them.
@@ -47,7 +58,10 @@ resource "aws_sns_topic" "alarms" {
 }
 
 resource "aws_sns_topic_policy" "alarms" {
-  topic_arn = aws_sns_topic.alarms.arn
+  # The policy resource of the provider binds to the topic through the arn of
+  # the topic itself; the name of the argument is the identifier that the
+  # service of the policy reads, and the resource is inert without it.
+  arn = aws_sns_topic.alarms.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -97,10 +111,9 @@ resource "aws_sns_topic_subscription" "operations" {
   topic_arn = aws_sns_topic.alarms.arn
   # The protocol of every member is validated in variables.tf so that the
   # service never sees a transport that the estate would not approve.
-  protocol        = each.value["protocol"]
-  endpoint        = each.value["endpoint"]
+  protocol = each.value["protocol"]
+  endpoint = each.value["endpoint"]
 
-  tags = merge(local.common_tags, { Name = "${var.environment_name}-sub-${index(split("@", each.value["endpoint"]), 0)}" })
 }
 
 # ---------------------------------------------------------------------------
@@ -141,10 +154,10 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilisation" {
   # The metric is the platform metric of the service in the namespace of EC2;
   # the statistic of the average over three five-minute periods with two of them
   # breaching is the rule that the on-call of the platform signed off on.
-  alarm_name          = "${var.environment_name}-cpu-utilisation"
-  alarm_description   = "The compute of a fleet host has been above ${var.cpu_threshold} percent for ${local.cpu_periods} periods of five minutes."
-  namespace           = "AWS/EC2"
-  metric_name         = "CPUUtilization"
+  alarm_name        = "${var.environment_name}-cpu-utilisation"
+  alarm_description = "The compute of a fleet host has been above ${var.cpu_threshold} percent for ${local.cpu_periods} periods of five minutes."
+  namespace         = "AWS/EC2"
+  metric_name       = "CPUUtilization"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -167,10 +180,10 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
   # unreachable, which is the class of incident that the pager must never miss;
   # the missing data is treated as a breach here, because a vanished host is the
   # incident, not the absence of one.
-  alarm_name         = "${var.environment_name}-status-check"
-  alarm_description  = "A fleet host has failed its status check; the host is either dead or unreachable through the network path of the instance."
-  namespace          = "AWS/EC2"
-  metric_name        = "StatusCheckFailed_Instance"
+  alarm_name        = "${var.environment_name}-status-check"
+  alarm_description = "A fleet host has failed its status check; the host is either dead or unreachable through the network path of the instance."
+  namespace         = "AWS/EC2"
+  metric_name       = "StatusCheckFailed_Instance"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -192,10 +205,10 @@ resource "aws_cloudwatch_metric_alarm" "burst_balance" {
   # The surplus credit of a burstable host is the reserve that is left of the
   # credit account of the instance; when the surplus falls under the reviewed
   # value the on-call still has the window of a full period before the press bites.
-  alarm_name          = "${var.environment_name}-burst-balance"
-  alarm_description   = "A fleet host of the burstable class has fallen under ${var.burst_balance_threshold} percent of the surplus credit of its CPU."
-  namespace           = "AWS/EC2"
-  metric_name         = "CPUCreditBalanceSurplus"
+  alarm_name        = "${var.environment_name}-burst-balance"
+  alarm_description = "A fleet host of the burstable class has fallen under ${var.burst_balance_threshold} percent of the surplus credit of its CPU."
+  namespace         = "AWS/EC2"
+  metric_name       = "CPUCreditBalanceSurplus"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -218,10 +231,10 @@ resource "aws_cloudwatch_metric_alarm" "agent_free_memory" {
   # namespace of the agent and adds the dimension of the auto scaling group. A
   # fleet without the agent has no memory signal at all, which is why this alarm
   # stands beside the alarms of the platform plane and not inside them.
-  alarm_name          = "${var.environment_name}-free-memory"
-  alarm_description   = "A fleet host has less than ${var.free_memory_threshold} mebibytes of free memory; the next allocation of the workload may reach for the swap."
-  namespace           = "CWAgent"
-  metric_name         = "MemoryFree"
+  alarm_name        = "${var.environment_name}-free-memory"
+  alarm_description = "A fleet host has less than ${var.free_memory_threshold} mebibytes of free memory; the next allocation of the workload may reach for the swap."
+  namespace         = "CWAgent"
+  metric_name       = "MemoryFree"
   dimensions = {
     AutoScalingGroupName = var.monitored_asg_name
   }
@@ -244,10 +257,10 @@ resource "aws_cloudwatch_metric_alarm" "database_connections" {
   # of an application database knows by heart: the database is fine, and nothing
   # can connect any more. The threshold is a fraction of the ceiling of the class
   # that the caller passes in.
-  alarm_name         = "${var.environment_name}-database-connections"
-  alarm_description  = "The database has reached ${var.database_connections_threshold} connections of the pool; a saturation of the pool starves every new client of the application."
-  namespace          = "AWS/RDS"
-  metric_name        = "DatabaseConnections"
+  alarm_name        = "${var.environment_name}-database-connections"
+  alarm_description = "The database has reached ${var.database_connections_threshold} connections of the pool; a saturation of the pool starves every new client of the application."
+  namespace         = "AWS/RDS"
+  metric_name       = "DatabaseConnections"
   dimensions = {
     DBInstanceIdentifier = var.monitored_db_identifier
   }
@@ -268,10 +281,10 @@ resource "aws_cloudwatch_metric_alarm" "freeable_memory" {
   # The freeable memory of the database is the memory that the engine may reclaim
   # without pressure; when it runs low for three periods, the next large query is
   # a swap event and the swap is the outage of the trade.
-  alarm_name         = "${var.environment_name}-freeable-memory"
-  alarm_description  = "The freeable memory of the database has fallen under ${var.freeable_memory_threshold} mebibytes; the engine is about to reach for the swap of its buffer."
-  namespace          = "AWS/RDS"
-  metric_name        = "FreeableMemory"
+  alarm_name        = "${var.environment_name}-freeable-memory"
+  alarm_description = "The freeable memory of the database has fallen under ${var.freeable_memory_threshold} mebibytes; the engine is about to reach for the swap of its buffer."
+  namespace         = "AWS/RDS"
+  metric_name       = "FreeableMemory"
   dimensions = {
     DBInstanceIdentifier = var.monitored_db_identifier
   }
@@ -317,19 +330,19 @@ resource "aws_cloudwatch_metric_alarm" "cache_evicted_keys" {
 resource "aws_ssm_patch_baseline" "family" {
   for_each = toset(local.patch_os_families)
 
-  name                    = "${var.environment_name}-${replace(lower(each.value), " ", "-")}"
-  description             = "Patch baseline of the ${each.value} family of ${var.environment_name}: it approves the security class of patch with a grace period of ${var.patch_grace_period_days} days."
-  operating_system        = each.value
-  approved_patches_compliance_level = "HIGH"
+  name                                 = "${var.environment_name}-${replace(lower(each.value), " ", "-")}"
+  description                          = "Patch baseline of the ${each.value} family of ${var.environment_name}: it approves the security class of patch with a grace period of ${var.patch_grace_period_days} days."
+  operating_system                     = each.value
+  approved_patches_compliance_level    = "HIGH"
   approved_patches_enable_non_security = true
 
   approval_rule {
     # The approve rule of the estate: a patch that matches the filter of the
     # product is installed after the grace period of its publication, so that a
     # canary stage of the fleet meets it before the bulk of the estate does.
-    approve_after_days               = var.patch_grace_period_days
-    compliance_level                 = "HIGH"
-    enable_non_security              = true
+    approve_after_days  = var.patch_grace_period_days
+    compliance_level    = "HIGH"
+    enable_non_security = true
 
     patch_filter {
       key    = "Product"
@@ -338,18 +351,21 @@ resource "aws_ssm_patch_baseline" "family" {
   }
 
   global_filter {
-    key    = "Classification"
+    key    = "CLASSIFICATION"
     values = ["*"]
   }
 
   tags = merge(local.common_tags, { Name = "${var.environment_name}-${replace(lower(each.value), " ", "-")}-baseline" })
 }
 
+# The patch group of the platform collects the reviewed baselines by identifier:
+# the fleet of ${var.environment_name} is patched against this set, and the group is
+# the default of every patchable operating system of the platform. The narrative
+# of the group lives here in the record of the change, because the resource of the
+# service carries no description argument.
 resource "aws_ssm_patch_group" "platform" {
   patch_group = "${var.environment_name}-platform"
-  description = "The fleet of ${var.environment_name} is patched against the reviewed baselines of this group, and the group is the default of every patchable operating system of the platform."
-
-  tags = merge(local.common_tags, { Name = "${var.environment_name}-platform" })
+  baseline_id = [for baseline in aws_ssm_patch_baseline.family : baseline.id]
 }
 
 resource "aws_ssm_default_patch_baseline" "family" {
@@ -374,10 +390,10 @@ resource "datadog_monitor_json" "platform_watcher" {
     # blocks of the provider. The escalation message names the channel of the
     # on-call, which is what turns a page into a human act.
     jsonencode({
-      name              = "${var.environment_name} compute press"
-      type              = "metric alert"
-      query             = "avg:system.cpu.iowait{env:${var.environment_name}} by {host} > 80"
-      message           = <<-EOM
+      name    = "${var.environment_name} compute press"
+      type    = "metric alert"
+      query   = "avg:system.cpu.iowait{env:${var.environment_name}} by {host} > 80"
+      message = <<-EOM
         A fleet host of ${var.environment_name} has pressed its storage path for
         fifteen minutes; the escalation message of the watch routes to the team
         channel ${var.datadog_pager_channel} of the on-call.
@@ -397,9 +413,9 @@ resource "datadog_monitor_json" "platform_watcher" {
       ]
     }),
     jsonencode({
-      name  = "${var.environment_name} database pool saturation"
-      type  = "query alert"
-      query = "avg:rds.connections.active{db:${var.monitored_db_identifier}} > ${var.database_connections_threshold}"
+      name    = "${var.environment_name} database pool saturation"
+      type    = "query alert"
+      query   = "avg:rds.connections.active{db:${var.monitored_db_identifier}} > ${var.database_connections_threshold}"
       message = <<-EOM
         The connection pool of ${var.monitored_db_identifier} has reached the
         reviewed watermark; the runbook of the pool is the board of the database
@@ -407,7 +423,7 @@ resource "datadog_monitor_json" "platform_watcher" {
         @${var.datadog_pager_channel}
         EOM
       options = {
-        thresholds   = { critical = var.database_connections_threshold }
+        thresholds        = { critical = var.database_connections_threshold }
         renotify_interval = 1800
         renotify_statuses = ["alert"]
       }
@@ -446,10 +462,11 @@ resource "datadog_dashboard_list" "platform" {
   name = "${var.environment_name} — the board of the platform"
 
   dash_item {
-    # The list of the board of the team holds the board of this module, so that
-    # the operator of the platform finds the board of the estate first on the
-    # screen of the morning.
-    dashboard_id = datadog_dashboard_json.platform_board[0].id
-    title        = "The platform board of ${var.environment_name}"
+    # The list of the board of the team holds the board of this module as an item
+    # of the type of the dashboard, addressed by the identifier that the board
+    # resource reports, so that the operator of the platform finds the board of
+    # the estate first on the screen of the morning.
+    dash_id = datadog_dashboard_json.platform_board[0].id
+    type    = "custom_timeboard"
   }
 }

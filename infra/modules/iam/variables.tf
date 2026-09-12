@@ -8,7 +8,7 @@ variable "environment_name" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,30}$", var.environment_name))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.environment_name))
     error_message = "environment_name must start with a lowercase letter and contain lowercase letters, digits or hyphens only, of at most 31 characters."
   }
 }
@@ -83,18 +83,8 @@ variable "break_glass_role_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", var.break_glass_role_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", var.break_glass_role_arn))
     error_message = "break_glass_role_arn must be a full IAM role ARN of the form arn:aws:iam::ACCOUNT_ID:role/NAME."
-  }
-}
-
-variable "alarm_topic_arn" {
-  description = "The ARN of the alarm topic that the observability module owns. The delivery role of the alarms is allowed to publish into exactly this topic and into nothing else, which is the least privilege of the whole notification path."
-  type        = string
-
-  validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:sns:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:[a-zA-Z0-9_-]+$", var.alarm_topic_arn))
-    error_message = "alarm_topic_arn must be a full Simple Notification Service topic ARN of the form arn:aws:sns:REGION:ACCOUNT_ID:NAME."
   }
 }
 

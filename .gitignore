@@ -38,3 +38,5 @@ reports/
 .idea/
 .DS-Store
 Thumbs.db
+.terraform.lock.hcl
+*.pyc

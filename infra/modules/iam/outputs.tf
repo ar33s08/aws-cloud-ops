@@ -28,11 +28,6 @@ output "service_role_arns" {
   value       = { for key, role in aws_iam_role.service : key => role.arn }
 }
 
-output "alarm_delivery_role_arn" {
-  description = "The ARN of the role that the monitoring services assume to publish their events into the alarm topic of the environment."
-  value       = aws_iam_role.alarm_delivery.arn
-}
-
 output "ssm_agent_managed_policy_arns" {
   description = "The managed policies of the agent of Systems Manager that the module attaches to the compute role, listed for the drift report of the toolkit, which checks them against the role of the fleet."
   value       = local.ssm_agent_managed_policies

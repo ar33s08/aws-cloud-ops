@@ -8,7 +8,7 @@ variable "environment_name" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,30}$", var.environment_name))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.environment_name))
     error_message = "environment_name must start with a lowercase letter and contain lowercase letters, digits or hyphens only, of at most 31 characters."
   }
 }
@@ -41,7 +41,7 @@ variable "logs_kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.logs_kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.logs_kms_key_arn))
     error_message = "logs_kms_key_arn must be a full KMS key ARN or key alias ARN of the form arn:aws:kms:REGION:ACCOUNT_ID:key/UUID or .../alias/NAME."
   }
 }
@@ -51,7 +51,7 @@ variable "alarm_kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.alarm_kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.alarm_kms_key_arn))
     error_message = "alarm_kms_key_arn must be a full KMS key ARN or key alias ARN."
   }
 }
@@ -80,7 +80,7 @@ variable "monitored_asg_name" {
   default     = null
 
   validation {
-    condition     = var.monitored_asg_name == null ? true : can(regexmatch("^[a-zA-Z0-9-_][a-zA-Z0-9-_+.=,@\\[\\]]{0,254}$", var.monitored_asg_name))
+    condition     = var.monitored_asg_name == null ? true : can(regex("^[a-zA-Z0-9-_][a-zA-Z0-9-_+.=,@\\[\\]]{0,254}$", var.monitored_asg_name))
     error_message = "monitored_asg_name must name an existing auto scaling group of the environment."
   }
 }
@@ -162,9 +162,9 @@ variable "notification_subscriptions" {
     condition = alltrue([
       for sub in var.notification_subscriptions :
       contains(["email", "email-json", "https", "sqs", "lambda"], sub.protocol)
-    ]) && alltrue([
+      ]) && alltrue([
       for sub in var.notification_subscriptions :
-      (sub.protocol == "https" ? can(regexmatch("^https://[a-zA-Z0-9-./%_~]+$", sub.endpoint)) : true)
+      (sub.protocol == "https" ? can(regex("^https://[a-zA-Z0-9-./%_~]+$", sub.endpoint)) : true)
     ])
     error_message = "every subscription must use one of email, email-json, https, sqs or lambda, and an endpoint of the https protocol must be a full https address."
   }
@@ -181,7 +181,7 @@ variable "dashboard_json_path" {
   type        = string
 
   validation {
-    condition     = can(regexmatch(".*[a-zA-Z0-9_/.-]+\\.json$", var.dashboard_json_path))
+    condition     = can(regex(".*[a-zA-Z0-9_/.-]+[.]json$", var.dashboard_json_path))
     error_message = "dashboard_json_path must name an existing JSON file of the repository."
   }
 }
@@ -202,7 +202,7 @@ variable "datadog_pager_channel" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-zA-Z0-9-]{1,80}$", var.datadog_pager_channel))
+    condition     = can(regex("^[a-zA-Z0-9-]{1,80}$", var.datadog_pager_channel))
     error_message = "datadog_pager_channel must name one channel of the platform without an at sign, for example oncall-platform."
   }
 }

@@ -116,14 +116,14 @@ resource "aws_iam_account_password_policy" "platform" {
   # of a peer into the change form.
   minimum_password_length      = var.password_minimum_length
   require_lowercase_characters = true
-  require_numbers                = true
-  require_symbols                = true
+  require_numbers              = true
+  require_symbols              = true
   require_uppercase_characters = true
 
   allow_users_to_change_password = true
-  hard_expiry                      = false
-  max_password_age                 = 365
-  password_reuse_prevention        = 8
+  hard_expiry                    = false
+  max_password_age               = 365
+  password_reuse_prevention      = 8
 }
 
 # ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ resource "aws_kms_key" "platform" {
     prevent_destroy = true
 
     precondition {
-      condition     = alltrue([for arn in var.key_admin_role_arns : can(regexmatch("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", arn))])
+      condition     = alltrue([for arn in var.key_admin_role_arns : can(regex("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", arn))])
       error_message = "every member of key_admin_role_arns must be a full IAM role ARN of the form arn:aws:iam::ACCOUNT_ID:role/NAME; a wildcard administrator of keys is never acceptable here."
     }
   }
@@ -235,7 +235,7 @@ resource "aws_kms_key" "platform" {
 resource "aws_kms_alias" "platform" {
   for_each = aws_kms_key.platform
 
-  alias_name    = "alias/${var.environment_name}-${each.key}"
+  name          = "alias/${var.environment_name}-${each.key}"
   target_key_id = each.value.key_id
 }
 
@@ -315,8 +315,8 @@ resource "aws_iam_policy" "boundary" {
         }
       },
       {
-        Sid       = "KeepTheControlPlanesOutOfReach"
-        Effect    = "Deny"
+        Sid    = "KeepTheControlPlanesOutOfReach"
+        Effect = "Deny"
         # Deny of everything except the enumerated data-plane actions is the
         # standard boundary shape: a role may never exceed the boundary, so the
         # planes of identity, of key governance, of audit and of the organisation
@@ -405,52 +405,4 @@ resource "aws_iam_policy" "deny_destructive" {
   })
 
   tags = merge(local.common_tags, { Name = "${var.environment_name}-deny-destructive" })
-}
-
-# ---------------------------------------------------------------------------
-# The delivery role of the alarm pipeline
-# ---------------------------------------------------------------------------
-
-resource "aws_iam_role" "alarm_delivery" {
-  name_prefix          = "${var.environment_name}-alarm-delivery-"
-  description          = "Role that the monitoring services assume to publish their events into the alarm topic of ${var.environment_name}."
-  max_session_duration = 3600
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "OnlyTheseServicesOfThisAccountMayDelegate"
-      Effect    = "Allow"
-      Principal = { Service = ["cloudwatch.amazonaws.com", "cloudwatch-alarm.amazonaws.com"] }
-      Action    = "sts:AssumeRole"
-      Condition = {
-        StringEquals = {
-          "aws:SourceAccount" = [local.account_id]
-        }
-      }
-    }]
-  })
-
-  permissions_boundary = aws_iam_policy.boundary.arn
-
-  tags = merge(local.common_tags, { Name = "${var.environment_name}-alarm-delivery" })
-}
-
-resource "aws_iam_role_policy" "alarm_delivery" {
-  name_prefix = "${var.environment_name}-alarm-delivery-"
-  role        = aws_iam_role.alarm_delivery.name
-
-  # Least privilege of the delivery path: the only permitted action is the
-  # publish into the one topic that the observability module owns.
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid      = "PublishToTheAlarmTopicOnly"
-      Effect   = "Allow"
-      Action   = "sns:Publish"
-      Resource = var.alarm_topic_arn
-    }]
-  })
-
-  tags = merge(local.common_tags, { Name = "${var.environment_name}-alarm-delivery-policy" })
 }

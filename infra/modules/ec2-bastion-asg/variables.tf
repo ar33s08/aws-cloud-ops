@@ -8,7 +8,7 @@ variable "name_prefix" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,30}$", var.name_prefix))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.name_prefix))
     error_message = "name_prefix must start with a lowercase letter and contain only lowercase letters, digits or hyphens (maximum 31 characters)."
   }
 }
@@ -18,7 +18,7 @@ variable "vpc_id" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^vpc-[0-9a-f]{8,17}$", var.vpc_id))
+    condition     = can(regex("^vpc-[0-9a-f]{8,17}$", var.vpc_id))
     error_message = "vpc_id must look like a VPC id, for example vpc-0123456789abcdef0."
   }
 }
@@ -29,7 +29,7 @@ variable "vpc_cidr" {
 
   validation {
     condition     = can(cidrsubnets(var.vpc_cidr, 8, 0))
-    error_message = "vpc_cidr must be a valid IPv4 CIDR block of at most a /2x prefix."
+    error_message = "vpc_cidr must be a valid IPv4 CIDR block of at most a /24 prefix."
   }
 }
 
@@ -38,7 +38,7 @@ variable "subnet_ids" {
   type        = list(string)
 
   validation {
-    condition     = length(var.subnet_ids) >= 1 && alltrue([for id in var.subnet_ids : can(regexmatch("^subnet-[0-9a-f]{8,17}$", id))])
+    condition     = length(var.subnet_ids) >= 1 && alltrue([for id in var.subnet_ids : can(regex("^subnet-[0-9a-f]{8,17}$", id))])
     error_message = "subnet_ids must be a non-empty list of subnet ids of the form subnet-0123456789abcdef0."
   }
 }
@@ -65,7 +65,7 @@ variable "bastion_ami_id" {
   default     = null
 
   validation {
-    condition     = var.bastion_ami_id == null ? true : can(regexmatch("^ami-[0-9a-f]{8,17}$", var.bastion_ami_id))
+    condition     = var.bastion_ami_id == null ? true : can(regex("^ami-[0-9a-f]{8,17}$", var.bastion_ami_id))
     error_message = "bastion_ami_id must be null or an AMI id of the form ami-0123456789abcdef0."
   }
 }
@@ -76,7 +76,7 @@ variable "ami_ssm_parameter_name" {
   default     = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 
   validation {
-    condition     = can(regexmatch("^/aws/service/[a-zA-Z0-9/.-]+$", var.ami_ssm_parameter_name))
+    condition     = can(regex("^/aws/service/[a-zA-Z0-9_/.-]+$", var.ami_ssm_parameter_name))
     error_message = "ami_ssm_parameter_name must be an absolute public Parameter Store path below /aws/service/."
   }
 }
@@ -97,7 +97,7 @@ variable "root_volume_kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.root_volume_kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.root_volume_kms_key_arn))
     error_message = "root_volume_kms_key_arn must be a full KMS key ARN or key alias ARN of the form arn:aws:kms:REGION:ACCOUNT_ID:key/UUID or .../alias/NAME."
   }
 }
@@ -167,7 +167,7 @@ variable "target_group_arns" {
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.target_group_arns : can(regexmatch("^arn:[a-z0-9-]+:elasticloadbalancing:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:targetgroup/[a-zA-Z0-9-]+/[a-zA-Z0-9-]+$", arn))])
+    condition     = alltrue([for arn in var.target_group_arns : can(regex("^arn:[a-z0-9-]+:elasticloadbalancing:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:targetgroup/[a-zA-Z0-9-]+/[a-zA-Z0-9-]+$", arn))])
     error_message = "every entry of target_group_arns must be an Application Load Balancer target group ARN of the form arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/NAME/GROUP_ID."
   }
 }

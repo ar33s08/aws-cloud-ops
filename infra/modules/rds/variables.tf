@@ -9,7 +9,7 @@ variable "identifier" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-z][a-z0-9-]{1,61}[a-z0-9]$", var.identifier))
+    condition     = can(regex("^[a-z][a-z0-9-]{1,61}[a-z0-9]$", var.identifier))
     error_message = "identifier must contain lowercase letters, digits or hyphens only, must be at least 3 characters, and must neither begin nor end with a hyphen."
   }
 }
@@ -40,7 +40,7 @@ variable "engine_version" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[0-9]+(\\.[0-9]+){0,2}(-[a-z0-9.]+)?$", var.engine_version))
+    condition     = can(regex("^[0-9]+([.][0-9]+){0,2}(-[a-z0-9.]+)?$", var.engine_version))
     error_message = "engine_version must be a dotted numeric version such as 8.0.35, 15.4 or 10.6.10, optionally with a trailing tag such as -rds.1."
   }
 }
@@ -55,7 +55,7 @@ variable "replica_instance_class" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^db\\.[a-z0-9]+\\.[a-z0-9]+$", var.replica_instance_class))
+    condition     = can(regex("^db[.][a-z0-9]+[.][a-z0-9]+$", var.replica_instance_class))
     error_message = "replica_instance_class must look like db.r6g.xlarge."
   }
 }
@@ -65,7 +65,7 @@ variable "username" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^[a-zA-Z][a-zA-Z0-9]{0,62}$", var.username))
+    condition     = can(regex("^[a-zA-Z][a-zA-Z0-9]{0,62}$", var.username))
     error_message = "username must start with a letter and contain letters, digits or the underscore only, and it may not collide with a reserved name such as rdsadmin."
   }
 }
@@ -76,7 +76,7 @@ variable "db_name" {
   default     = null
 
   validation {
-    condition     = var.db_name == null ? true : can(regexmatch("^[a-zA-Z][a-zA-Z0-9_]{0,63}$", var.db_name))
+    condition     = var.db_name == null ? true : can(regex("^[a-zA-Z][a-zA-Z0-9_]{0,63}$", var.db_name))
     error_message = "db_name must start with a letter and contain letters, digits or the underscore only."
   }
 }
@@ -92,7 +92,7 @@ variable "private_subnet_ids" {
   type        = list(string)
 
   validation {
-    condition     = length(var.private_subnet_ids) >= 2 && alltrue([for id in var.private_subnet_ids : can(regexmatch("^subnet-[0-9a-f]{8,17}$", id))])
+    condition     = length(var.private_subnet_ids) >= 2 && alltrue([for id in var.private_subnet_ids : can(regex("^subnet-[0-9a-f]{8,17}$", id))])
     error_message = "private_subnet_ids must contain at least two subnet ids of the form subnet-0123456789abcdef0, because RDS requires a subnet in at least two Availability Zones."
   }
 }
@@ -102,7 +102,7 @@ variable "database_security_group_ids" {
   type        = list(string)
 
   validation {
-    condition     = length(var.database_security_group_ids) >= 1 && alltrue([for id in var.database_security_group_ids : can(regexmatch("^sg-[0-9a-f]{8,17}$", id))])
+    condition     = length(var.database_security_group_ids) >= 1 && alltrue([for id in var.database_security_group_ids : can(regex("^sg-[0-9a-f]{8,17}$", id))])
     error_message = "database_security_group_ids must be a non-empty list of security group ids of the form sg-0123456789abcdef0."
   }
 }
@@ -118,7 +118,7 @@ variable "kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.kms_key_arn))
     error_message = "kms_key_arn must be a full KMS key ARN or key alias ARN of the form arn:aws:kms:REGION:ACCOUNT_ID:key/UUID or .../alias/NAME."
   }
 }
@@ -128,7 +128,7 @@ variable "performance_insights_kms_key_arn" {
   type        = string
 
   validation {
-    condition     = can(regexmatch("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.performance_insights_kms_key_arn))
+    condition     = can(regex("^arn:[a-z0-9-]+:kms:[a-z0-9-]+-[a-z0-9-]+-[0-9]+:(key/[0-9a-f-]+|alias/[a-zA-Z0-9/_-]+)$", var.performance_insights_kms_key_arn))
     error_message = "performance_insights_kms_key_arn must be a full KMS key ARN or key alias ARN."
   }
 }
@@ -150,7 +150,7 @@ variable "backup_window" {
   default     = "17:00-18:00"
 
   validation {
-    condition     = can(regexmatch("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", var.backup_window))
+    condition     = can(regex("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", var.backup_window))
     error_message = "backup_window must look like 17:00-18:00 with both times written in Coordinated Universal Time."
   }
 }
@@ -161,8 +161,8 @@ variable "maintenance_window" {
   default     = "03:00-04:00"
 
   validation {
-    condition     = can(regexmatch("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
-    error_message = "maintenance_window must look like 03:00-04:00 with both times written in Coordinated Universal Time."
+    condition     = can(regex("^((mon|tue|wed|thu|fri|sat|sun):)?[0-2][0-9]:[0-5][0-9]-((mon|tue|wed|thu|fri|sat|sun):)?[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    error_message = "maintenance_window must look like 03:00-04:00 or sun:03:00-sun:04:00 with both times written in Coordinated Universal Time."
   }
 }
 
@@ -250,7 +250,7 @@ variable "monitoring_role_arn" {
   default     = null
 
   validation {
-    condition     = var.monitoring_role_arn == null ? true : can(regexmatch("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", var.monitoring_role_arn))
+    condition     = var.monitoring_role_arn == null ? true : can(regex("^arn:[a-z0-9-]+:iam::[0-9]{1,12}:role/[a-zA-Z0-9+=,.@_-]+$", var.monitoring_role_arn))
     error_message = "monitoring_role_arn must be a full IAM role ARN of the form arn:aws:iam::ACCOUNT_ID:role/NAME."
   }
 }

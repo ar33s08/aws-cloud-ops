@@ -35,7 +35,7 @@ locals {
   # which is what keeps a memory press from turning into a brownout of the tier.
   parameter_set = merge(
     {
-      "maxmemory-policy"   = "volatile-lru"
+      "maxmemory-policy"  = "volatile-lru"
       "repl-backlog-size" = "1048576"
     },
     var.parameter_overrides
@@ -51,7 +51,7 @@ locals {
 }
 
 resource "aws_elasticache_subnet_group" "private" {
-  name_prefix = "${var.replication_group_id}-"
+  name        = "${var.replication_group_id}-private"
   description = "Private-tier subnet group for the cache ${var.replication_group_id}; it must never contain a public subnet."
 
   # The validation on private_subnet_ids keeps the placement inside the private
@@ -59,13 +59,13 @@ resource "aws_elasticache_subnet_group" "private" {
   subnet_ids = var.private_subnet_ids
 
   tags = merge(local.common_tags, {
-    Name              = "${var.replication_group_id}-cache-sg"
+    Name            = "${var.replication_group_id}-cache-sg"
     "security:tier" = "private-only"
   })
 }
 
 resource "aws_elasticache_parameter_group" "engine" {
-  name_prefix = "${var.replication_group_id}-"
+  name        = "${var.replication_group_id}-engine"
   family      = var.parameter_group_family
   description = "Hardened parameter set for the ${var.engine} cache ${var.replication_group_id}."
 
@@ -84,11 +84,11 @@ resource "aws_elasticache_replication_group" "this" {
   replication_group_id = var.replication_group_id
   description          = "SSM-managed ${var.engine} cache of the ${var.replication_group_id} workload."
 
-  engine                 = var.engine
-  engine_version         = var.engine_version
-  node_type              = var.node_type
+  engine                     = var.engine
+  engine_version             = var.engine_version
+  node_type                  = var.node_type
   automatic_failover_enabled = local.failover_enabled
-  multi_az_enabled       = var.multi_az
+  multi_az_enabled           = var.multi_az
 
   # The topology is expressed in whichever pair of fields the service expects for
   # the chosen mode: a single shard counts its nodes directly (the primary plus
@@ -101,17 +101,17 @@ resource "aws_elasticache_replication_group" "this" {
 
   # The TLS port of the service; with the in-transit switch below in required
   # mode this is the only port that the nodes answer on.
-  port            = 6379
-  snapshot_retention_limit = var.snapshot_retention_days
-  snapshot_window          = var.snapshot_window
-  maintenance_window       = var.maintenance_window
-  apply_immediately        = false
+  port                       = 6379
+  snapshot_retention_limit   = var.snapshot_retention_days
+  snapshot_window            = var.snapshot_window
+  maintenance_window         = var.maintenance_window
+  apply_immediately          = false
   auto_minor_version_upgrade = true
 
   # The cache sits in the private tier of the network module and is reachable
   # only from the application security groups that the caller passes.
-  subnet_group_name    = aws_elasticache_subnet_group.private.name
-  security_group_ids   = var.cache_security_group_ids
+  subnet_group_name  = aws_elasticache_subnet_group.private.name
+  security_group_ids = var.cache_security_group_ids
 
   parameter_group_name = aws_elasticache_parameter_group.engine.name
 
@@ -141,7 +141,7 @@ resource "aws_elasticache_replication_group" "this" {
     # The gate below mirrors the end-of-life policy of the toolkit: the version
     # must match the pattern that the engine declares in the variables file.
     precondition {
-      condition     = can(regexmatch(local.supported_engine_versions[var.engine], var.engine_version))
+      condition     = can(regex(local.supported_engine_versions[var.engine], var.engine_version))
       error_message = "engine_version ${var.engine_version} is outside the supported majors for engine ${var.engine}; see the supported_engine_versions map above and the end-of-life catalogue of the toolkit."
     }
 

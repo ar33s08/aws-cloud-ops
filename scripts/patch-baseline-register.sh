@@ -108,7 +108,7 @@ validate_definition_with_python() {
     # the main flow turns into CLI calls.
     # Returns: python exit status -- 0 valid, non-zero invalid.
     local file=$1
-    CLOUDOPS_REPO_ROOT=$REPO_ROOT _CLOUDOPS_BASELINE_FILE=$file \
+    _CLOUDOPS_REPO_ROOT=$REPO_ROOT _CLOUDOPS_BASELINE_FILE=$file \
         "$PYTHON_BIN" - <<'PYTHON_EOF'
 import os
 import sys
