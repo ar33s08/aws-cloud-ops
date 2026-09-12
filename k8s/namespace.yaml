@@ -1,0 +1,80 @@
+# This file is the namespace bootstrap for the day-2 operations workloads of
+# the aws-cloud-ops estate: the namespace itself, a LimitRange, and a
+# ResourceQuota. It matters to an operations team because day-2 work -- the
+# scheduled scans, the drift probes, the upgrade drills -- must arrive with
+# its own fault domain: a noisy drill must not starve the standing monitors,
+# and a forgotten --no-limits pod must not be able to eat the whole node
+# pool. Defaults and ceilings are declared here once, so admission rejects
+# anything sloppy before the scheduler ever sees it.
+#
+# Reference configuration for a drill cluster (EKS 1.2x). It claims nothing
+# is deployed anywhere; apply it only against a cluster you own.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: day2
+    program: aws-cloud-ops
+    team: platform-operations
+  annotations:
+    cloudops.aws/description: >-
+      Day-2 workloads of the aws-cloud-ops toolkit: scheduled EOL and drift
+      scans, and the reference deployment used by the EKS blue/green upgrade
+      runbook.
+spec:
+  finalizers:
+    - kubernetes
+---
+# LimitRange gives every container in the namespace a default shape and a
+# hard ceiling. The defaults keep a forgotten manifest schedulable; the
+# ceilings keep a typo (a stray "100" in front of a cpu figure) from taking
+# the node pool with it.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cloudops-day2-defaults
+  namespace: cloudops-day2
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      maxLimitToRatio:
+        cpu: "8"
+        memory: 16Gi
+    - type: Pod
+      # A day-2 workload that needs more than this is an admission exception,
+      # not a routine: the drills run against the reference deployment, not
+      # against production capacity.
+      max:
+        cpu: "4"
+        memory: 8Gi
+---
+# ResourceQuota caps the namespace as a whole. The numbers are sized for the
+# drills and the scanners of the reference estate; they are deliberately not
+# generous, because a quota that never speaks is the only quota worth having.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cloudops-day2-quota
+  namespace: cloudops-day2
+spec:
+  hard:
+    pods: "24"
+    count/pods: "24"
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    services: "8"
+    persistentvolumeclaims: "4"

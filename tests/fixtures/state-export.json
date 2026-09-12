@@ -1,0 +1,18 @@
+{
+  "_about": "Sanitized terraform state export for the drift fixtures: the attributes as the configuration claims them. Sample data from the reference sandbox; the resource addresses mirror infra/envs/prod.",
+  "resources": [
+    {"address": "module.network.aws_vpc.main", "type": "aws_vpc", "attributes": {
+      "cidr_block": "10.42.0.0/16", "enable_dns_support": true, "instance_tenancy": "default"}},
+    {"address": "module.ec2.aws_autoscaling_group.web", "type": "aws_instance", "attributes": {
+      "capacity": 3, "health_check_type": "EC2", "metadata_options.http_tokens": "required",
+      "security_groups": ["sg-hardened-01", "sg-bastion-ssm"], "encrypted": true}},
+    {"address": "module.rds.aws_db_instance.prod_mysql", "type": "aws_db_instance", "attributes": {
+      "engine": "mysql", "engine_version": "8.0.40", "storage_encrypted": true,
+      "backup_retention_period": 14, "multi_az": true, "publicly_accessible": false}},
+    {"address": "module.elasticache.aws_elasticache_replication_group.session", "type": "aws_elasticache_replication_group", "attributes": {
+      "cache_node_type": "cache.r6g.large", "num_cache_nodes": 3, "automatic_failover_enabled": true,
+      "transit_encryption_enabled": true}},
+    {"address": "module.iam.aws_iam_role.lambda_exec", "type": "aws_iam_role", "attributes": {
+      "max_session_duration_seconds": 3600, "force_detach_policies": true}}
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "_about": "Catalog of lifecycle dates the scanner compares installed versions against. Every date was transcribed from the source named in its entry (fetch date 2026-09-12); when in doubt, the live APIs are the authority: aws rds describe-db-major-engine-versions returns the same dates per engine (LifecycleSupportEndDate), and aws eks describe-versions returns the cluster version dates.",
+  "_sources": {
+    "al2": "https://aws.amazon.com/amazon-linux-2 (end of support 2026-06-30, confirmed 2026-09-12)",
+    "al2023": "https://endoflife.date/products/amazon-linux.md (end of support 2027-06-30, end of life 2029-06-30, confirmed 2026-09-12)",
+    "rds-mysql": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html (confirmed 2026-09-12)",
+    "rds-postgres": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html (confirmed 2026-09-12)",
+    "rds-mariadb": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support-viewing-support-dates.html (confirmed 2026-09-12)",
+    "elasticache-redis": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html (confirmed 2026-09-12)",
+    "eks": "https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html plus https://endoflife.date/amazon-eks (confirmed 2026-09-12)"
+  },
+  "entries": [
+    {"engine": "al2", "version_track": "al2", "eol": "2026-06-30",
+     "latest_available": "2023.6",
+     "action": "migrate the fleet to Amazon Linux 2023 images by rebuilding the AMIs; plan the rollback as a reattach to the previous launch template version",
+     "source": "https://aws.amazon.com/amazon-linux-2"},
+
+    {"engine": "al2023", "version_track": "al2023", "standard_support_end": "2027-06-30", "eol": "2029-06-30",
+     "latest_available": "2023.6",
+     "action": "stay current with the latest release through the patch program",
+     "source": "https://endoflife.date/products/amazon-linux.md"},
+
+    {"engine": "mysql", "version_track": "5.7",
+     "standard_support_end": "2024-02-29", "premium_support_end": "2029-06-30",
+     "latest_available": "8.4",
+     "action": "upgrade to 8.0 or 8.4 by the blue/green deployment (scripts/rds-major-upgrade-bluegreen.sh); extended support charges accrue per vCPU per hour while on 5.7",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html"},
+
+    {"engine": "mysql", "version_track": "8.0",
+     "standard_support_end": "2026-07-31", "premium_support_end": "2029-07-31",
+     "latest_available": "8.4",
+     "action": "upgrade to 8.4 before the extended support charges start; blue/green is the zero to minimal downtime path",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html"},
+
+    {"engine": "mysql", "version_track": "8.4",
+     "standard_support_end": "2029-07-31",
+     "latest_available": "8.4",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html"},
+
+    {"engine": "mariadb", "version_track": "10.6",
+     "standard_support_end": "2026-07-31",
+     "latest_available": "11.8",
+     "action": "mariadb gets no extended support: upgrade to a supported 11.x before the deadline",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support-viewing-support-dates.html"},
+
+    {"engine": "postgres", "version_track": "12",
+     "standard_support_end": "2025-02-28", "premium_support_end": "2028-02-28",
+     "latest_available": "18.1",
+     "action": "upgrade by the blue/green deployment",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "13",
+     "standard_support_end": "2026-02-28", "premium_support_end": "2029-02-28",
+     "latest_available": "18.1",
+     "action": "standard support has ended; upgrade to 15 or newer on the plan, or accept the extended support charges",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "14",
+     "standard_support_end": "2027-02-28", "premium_support_end": "2030-02-28",
+     "latest_available": "18.1",
+     "action": "schedule the upgrade to 17 or 18 within the next two planning quarters",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "15",
+     "standard_support_end": "2028-02-28", "premium_support_end": "2031-02-28",
+     "latest_available": "18.1",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "16",
+     "standard_support_end": "2029-02-28",
+     "latest_available": "18.1",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "17",
+     "standard_support_end": "2030-02-28",
+     "latest_available": "18.1",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "postgres", "version_track": "18",
+     "standard_support_end": "2031-02-28",
+     "latest_available": "18.1",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html"},
+
+    {"engine": "redis", "version_track": "4.0",
+     "standard_support_end": "2026-01-31", "premium_support_end": "2029-01-31",
+     "latest_available": "7.1",
+     "action": "upgrade to Valkey or to Redis OSS 7.x; ElastiCache auto-enrolled the cache in Extended Support, which charges 80 to 160 percent of the base instance price",
+     "source": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html"},
+
+    {"engine": "redis", "version_track": "5.0",
+     "standard_support_end": "2026-01-31", "premium_support_end": "2029-01-31",
+     "latest_available": "7.1",
+     "action": "upgrade to Valkey or to Redis OSS 7.x (Extended Support active, charges accrue)",
+     "source": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html"},
+
+    {"engine": "redis", "version_track": "6.2",
+     "standard_support_end": "2027-01-31", "premium_support_end": "2030-01-31",
+     "latest_available": "7.1",
+     "action": "upgrade to 7.x before 31 January 2027 to avoid the Extended Support surcharge",
+     "source": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html"},
+
+    {"engine": "redis", "version_track": "7.1",
+     "latest_available": "7.1",
+     "action": "no action required",
+     "source": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html"},
+
+    {"engine": "valkey", "version_track": "7.2",
+     "latest_available": "8.0",
+     "action": "consider the current 8.x release at the next maintenance window",
+     "source": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/extended-support-versions.html"},
+
+    {"engine": "eks", "version_track": "1.29", "eol": "2025-03-23", "premium_support_end": "2026-03-23",
+     "latest_available": "1.36",
+     "action": "the cluster is past the end of Extended Support: upgrade the control plane and then the node groups without delay",
+     "source": "https://endoflife.date/amazon-eks"},
+
+    {"engine": "eks", "version_track": "1.30", "eol": "2025-07-23", "premium_support_end": "2026-07-23",
+     "latest_available": "1.36",
+     "action": "the cluster is past the end of Extended Support: upgrade without delay",
+     "source": "https://endoflife.date/amazon-eks"},
+
+    {"engine": "eks", "version_track": "1.31", "eol": "2025-11-26", "premium_support_end": "2026-11-26",
+     "latest_available": "1.36",
+     "action": "upgrade to 1.3x before the Extended Support window closes",
+     "source": "https://endoflife.date/amazon-eks"},
+
+    {"engine": "eks", "version_track": "1.32", "eol": "2026-03-26", "premium_support_end": "2027-03-26",
+     "latest_available": "1.36",
+     "action": "upgrade to 1.34 or newer in the next window; Extended Support charges accrue",
+     "source": "https://endoflife.date/amazon-eks"},
+
+    {"engine": "eks", "version_track": "1.33", "eol": "2026-07-29", "premium_support_end": "2027-07-29",
+     "latest_available": "1.36",
+     "action": "upgrade to 1.34 or newer in the next window",
+     "source": "https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions-standard.html"},
+
+    {"engine": "eks", "version_track": "1.34",
+     "latest_available": "1.36",
+     "action": "supported; plan the next minor at the usual pace",
+     "source": "https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"}
+  ]
+}

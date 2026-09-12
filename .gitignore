@@ -1,0 +1,40 @@
+# Python
+.venv/
+__pycache__/
+*.py[cdo]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Terraform — the state file is the state of the estate; never commit it
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock
+*.tfplan
+*.tfvars
+.terraform/
+.terraform.lock
+crash.log
+tf.plan
+
+# AWS / credentials — credentials are secrets, keep them secret, keep them out
+.aws/
+*.pem
+*.key
+*.p12
+*credentials*
+.env
+.env.*
+
+# Reports and scratch
+reports/
+*.log
+*.csv.tmp
+.scratch/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS-Store
+Thumbs.db

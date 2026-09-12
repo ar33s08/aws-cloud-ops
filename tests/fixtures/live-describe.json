@@ -1,0 +1,21 @@
+{
+  "_about": "Live describe export for the drift fixtures: what the APIs report for the same resources. The differences against tests/fixtures/state-export.json are deliberate and are what tests/test_drift.py asserts on. One extra live resource (an unmanaged console-created instance) is present, and one state resource is gone from the live side (deleted outside the pipeline). Sample data from the reference sandbox.",
+  "resources": [
+    {"address": "module.network.aws_vpc.main", "type": "aws_vpc", "attributes": {
+      "cidr_block": "10.42.0.0/16", "enable_dns_support": true, "instance_tenancy": "default",
+      "modify_date": "2026-09-11T02:11:00+00:00"}},
+    {"address": "module.ec2.aws_autoscaling_group.web", "type": "aws_instance", "attributes": {
+      "capacity": 5, "health_check_type": "ELB", "metadata_options.http_tokens": "optional",
+      "security_groups": ["sg-bastion-ssm", "sg-hardened-01", "sg-debug-open"], "encrypted": true,
+      "public_ip": "203.0.113.10", "modify_date": "2026-09-09T22:03:00+00:00"}},
+    {"address": "module.rds.aws_db_instance.prod_mysql", "type": "aws_db_instance", "attributes": {
+      "engine": "mysql", "engine_version": "8.0.40", "storage_encrypted": true,
+      "backup_retention_period": 7, "multi_az": true, "publicly_accessible": false,
+      "endpoint": "db-prod-mysql-01.abc123.us-east-1.rds.amazonaws.com"}},
+    {"address": "module.elasticache.aws_elasticache_replication_group.session", "type": "aws_elasticache_replication_group", "attributes": {
+      "cache_node_type": "cache.r6g.large", "num_cache_nodes": 3, "automatic_failover_enabled": true,
+      "transit_encryption_enabled": true}},
+    {"address": "aws_instance.console_created_debug", "type": "aws_instance", "attributes": {
+      "instance_type": "t3.medium", "monitoring_role_arn": ""}}
+  ]
+}

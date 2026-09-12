@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aws-cloud-ops"
+version = "1.0.0"
+description = "Operations toolkit for AWS platform engineers: EOL/EOS remediation, patch programs, blue/green engine upgrades, drift control, and monitoring."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Arees Manesia"}]
+keywords = ["aws", "cloudops", "devops", "patching", "terraform", "atlantis", "datadog", "cloudwatch", "ssm"]
+classifiers = [
+  "Development-Status :: 5 - Production/Stable",
+  "Intended-Audience :: System Administrators",
+  "Topic :: Utilities :: Installation",
+  "License :: OSI :: Approved License",
+]
+
+[project.optional-dependencies]
+# Live mode talks to AWS APIs; canned mode (the default) does not need any third-party package.
+live = ["boto3>=1.34"]
+
+[project.scripts]
+cloudops = "cloudops.cli:main"
+
+[tool.setuptools]
+packages = ["cloudops"]
+
+[tool.setuptools.package-data]
+"cloudops" = ["data/*.json"]

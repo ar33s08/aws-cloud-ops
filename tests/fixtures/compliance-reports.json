@@ -1,0 +1,30 @@
+{
+  "_about": "Canned SSM patch compliance reports, one record per managed instance, in the shape cloudops.patch.compliance_scan reads (mirroring the Get-Patch-State response of the AWS Systems Manager APIs). The instance ids match tests/fixtures/fleet-inventory.json. Sample data from the reference sandbox.",
+  "reports": [
+    {"host_id": "i-0a1b2c3d4e5f60718",
+     "operation": {"patch_group": "PROD-STANDARD", "start_date": "2026-09-05T09:00:00+00:00"},
+     "instance_information": {"compliance": "NON-COMPLIANT", "severity": "CRITICAL",
+       "executed_at": "2026-08-18T09:12:00+00:00",
+       "installed_count": {"missing": 7, "installed": 41, "failed": 0, "blocked": 0}}},
+    {"host_id": "i-0a1b2c3d4e5f60719",
+     "operation": {"patch_group": "PROD-CANARY", "start_date": "2026-09-05T09:00:00+00:00"},
+     "instance_information": {"compliance": "COMPLIANT", "severity": "INFORMATIONAL",
+       "executed_at": "2026-09-05T09:14:00+00:00",
+       "installed_count": {"missing": 0, "installed": 48, "failed": 0, "blocked": 0}}},
+    {"host_id": "i-0b2c3d4e5f6071829",
+     "operation": {"patch_group": "PROD-STANDARD", "start_date": "2026-09-05T09:00:00+00:00"},
+     "instance_information": {"compliance": "NON-COMPLIANT", "severity": "MEDIUM",
+       "executed_at": "2026-09-05T09:15:00+00:00",
+       "installed_count": {"missing": 3, "installed": 52, "failed": 0, "blocked": 2}}},
+    {"host_id": "i-0c3d4e5f60718293a",
+     "operation": {"patch_group": "PROD-CRITICAL", "start_date": "2026-09-05T09:00:00+00:00"},
+     "instance_information": {"compliance": "COMPLIANT", "severity": "INFORMATIONAL",
+       "executed_at": "2026-09-05T09:16:00+00:00",
+       "installed_count": {"missing": 0, "installed": 37, "failed": 0, "blocked": 0}}},
+    {"host_id": "i-0d4e5f60718293a4b",
+     "operation": {"patch_group": "PROD-STANDARD", "start_date": "2026-08-01T09:00:00+00:00"},
+     "instance_information": {"compliance": "ERROR", "severity": "HIGH",
+       "executed_at": "2026-08-01T09:20:00+00:00",
+       "installed_count": {"missing": 12, "installed": 0, "failed": 4, "blocked": 0}}}
+  ]
+}

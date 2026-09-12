@@ -1,0 +1,136 @@
+# This file is the scheduled EOL and drift scan of the day-2 estate: a
+# CronJob that runs the cloudops scanner and the drift detector over the
+# reference inventory every morning, keeps the last verdict in a ConfigMap,
+# and exits nonzero when the fleet is past an end-of-life date so the failure
+# is loud in whatever alert router watches job status. It matters to an
+# operations team because EOL and drift are not things anyone remembers to
+# check: the scan either runs by clock, or it does not run at all, and a
+# fleet nobody scans is a fleet whose end-of-life dates arrive as incidents.
+#
+# The job runs the canned inventory by default (no AWS credentials, no
+# network beyond the container registry), which keeps the drill safe; live
+# mode is an operator decision, expressed as the IAM role to attach, never
+# as a secret in a manifest.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cloudops-daily-scan
+  namespace: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: scanner
+    program: aws-cloud-ops
+spec:
+  # One scan at a time: two scanners writing the same ConfigMap is a race
+  # the verdict should not be spent untangling. Missed windows (a node pool
+  # mid-drain at 06:00) are not replayed: the next morning sees the state
+  # anyway, and a backlog of replays hides the fresh finding.
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: "3"
+  failedJobsHistoryLimit: "5"
+  ttlSecondsAfterFinished: 1209600  # two weeks: enough history to see a week-over-week trend
+  schedule: "0 6 * * *"  # 06:00 UTC, before the US morning stand-up
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aws-cloud-ops
+        app.kubernetes.io/component: scanner
+    spec:
+      # A wedged scanner (a hung describe, a stuck registry pull) is a
+      # missing verdict, not a hung job: kill it well before the next window.
+      activeDeadlineSeconds: 1800
+      backoffLimitPerRetries: 2
+      podFailurePolicy:
+        restartPolicyOnIngress:
+          rules:
+            # Exit 2 is the scanner's data-problem code: burning a retry on
+            # a broken inventory file just delays the same failure.
+            - exitCodes:
+                operator: In
+                values: [2]
+              action: Forbid
+      template:
+        metadata:
+          annotations:
+            cloudops.aws/description: >-
+              Nightly EOL/EOS scan and drift pass over the reference fleet;
+              the exit code is the gate, the ConfigMap is the record.
+        spec:
+          restartPolicy: never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            supplementalGroups: [65532]
+            fsGroup: 65532
+            fsGroupChangePolicy: OnRootMismatch
+            seLinuxOptions:
+              level: s0
+              role: unconfined_r
+              type: container_t
+              user: system_u
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: scan
+              image: ghcr.io/ar33s08/aws-cloud-ops:1.0.0
+              imagePullPolicy: IfNotPresent
+              command:
+                - cloudops
+              args:
+                - scan
+                - --inventory
+                - /etc/cloudops/fleet-inventory.json
+                - --eol-catalog
+                - /etc/cloudops/eol-catalog.json
+                - --format
+                - json
+              env:
+                - name: CLOUDOPS_MODE
+                  value: canned
+              # The scanner is a short-lived batch process, not a server: it
+              # gets a startup gate so a slow cold start reads as "starting"
+              # rather than as "dead", and it gets no liveness or readiness
+              # probes, which have nothing to answer for a process that
+              # terminates on success.
+              startupProbe:
+                exec:
+                  command:
+                    - test
+                    - -f
+                    - /var/run/cloudops/started
+                intitialDelaySeconds: 5
+                periodSeconds: 5
+                timeoutSeconds: 3
+                failureThreshold: 24
+                successThreshold: 1
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFileSystem: true
+                capabilities:
+                  drop:
+                    - all
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: fleet-data
+                  mountPath: /etc/cloudops
+                  readOnly: true
+                - name: verdict
+                  mountPath: /var/run/cloudops
+          volumes:
+            - name: fleet-data
+              configMap:
+                name: cloudops-fleet-data
+                defaultMode: 0444
+                optional: true
+            - name: verdict
+              emptyDir:
+                sizeLimit: 8Mi

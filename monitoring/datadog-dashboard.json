@@ -1,0 +1,376 @@
+{
+  "public_id": "aws-cloud-ops-reference-fleet-0000-0000-000000000001",
+  "title": "aws-cloud-ops -- reference fleet operations",
+  "description": "Dashboard as code for the aws-cloud-ops toolkit. One gauge each for the four standing questions of the estate: what is past end-of-life, what is unpatched, what has drifted, and how the engine upgrades are going. Edit this file, open a pull request, and Atlantis reviews the plan; the monitor definitions live beside the dashboards.",
+  "layout_type": "ordered",
+  "reflow_type": "default",
+  "widgets": [
+    {
+      "id": null,
+      "definition": {
+        "type": "note",
+        "content": "aws-cloud-ops reference fleet -- EOL/EOS posture, patch compliance, drift, and engine-upgrade health. Metrics are emitted by the cloudops toolkit and by the SSM/CloudWatch integration; this file is the dashboard as code (Atlantis reviews changes to it). Reference configuration, not a deployed artifact.",
+        "color_bg": "white",
+        "color_fg": "black",
+        "font_size": "14",
+        "show_border": true,
+        "text_align": "left",
+        "horizontal": true
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 12,
+        "height": 2
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "query_value",
+        "title": "Hosts past end-of-life",
+        "requests": [
+          {
+            "queries": [
+              {
+                "query": "max:aws.ec2.instance_count{tag:program:aws-cloud-ops} by {eol_status}",
+                "name": "eol"
+              }
+            ],
+            "aggregator": {
+              "type": "total"
+            },
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 0,
+                "palette": "white_on_red",
+                "custom_bg_value": false
+              },
+              {
+                "comparator": "==",
+                "value": 0,
+                "palette": "white_on_green",
+                "custom_bg_value": false
+              }
+            ],
+            "sort": {
+              "column": "eol",
+              "order": "desc"
+            }
+          }
+        ],
+        "autoscale": true,
+        "precision": "0"
+      },
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "width": 3,
+        "height": 3
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "query_value",
+        "title": "Hosts approaching end-of-life (< 90 days)",
+        "requests": [
+          {
+            "queries": [
+              {
+                "query": "max:aws.ec2.instance_count{tag:eol_bucket:approaching} by {ami}",
+                "name": "soon"
+              }
+            ],
+            "aggregator": {
+              "type": "total"
+            },
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 0,
+                "palette": "white_on_yellow",
+                "custom_bg_value": false
+              }
+            ]
+          }
+        ],
+        "autoscale": true,
+        "precision": "0"
+      },
+      "layout": {
+        "x": 3,
+        "y": 2,
+        "width": 3,
+        "height": 3
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "query_value",
+        "title": "Patch compliance (baseline-missed packages)",
+        "requests": [
+          {
+            "queries": [
+              {
+                "query": "sum:aws.ec2.patching.missing_count{program:aws-cloud-ops} by {patch_group}",
+                "name": "missed"
+              }
+            ],
+            "aggregator": {
+              "type": "sum"
+            },
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 0,
+                "palette": "white_on_orange",
+                "custom_bg_value": false
+              },
+              {
+                "comparator": "==",
+                "value": 0,
+                "palette": "white_on_green",
+                "custom_bg_value": false
+              }
+            ]
+          }
+        ],
+        "autoscale": true,
+        "precision": "0"
+      },
+      "layout": {
+        "x": 6,
+        "y": 2,
+        "width": 3,
+        "height": 3
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "query_value",
+        "title": "Infrastructure drift findings",
+        "requests": [
+          {
+            "queries": [
+              {
+                "query": "max:cloudops.drift.findings{program:aws-cloud-ops} by {resource_type,severity}",
+                "name": "drift"
+              }
+            ],
+            "aggregator": {
+              "type": "total"
+            },
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 0,
+                "palette": "white_on_red",
+                "custom_bg_value": false
+              }
+            ]
+          }
+        ],
+        "autoscale": true,
+        "precision": "0"
+      },
+      "layout": {
+        "x": 9,
+        "y": 2,
+        "width": 3,
+        "height": 3
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "line",
+        "title": "Patch queue depth by severity (7d)",
+        "requests": [
+          {
+            "query": [
+              {
+                "response_format": "counts",
+                "q": "avg:cloudops.patch_queue.depth{program:aws-cloud-ops,severity:high} by {severity}",
+                "aggregator": "avg"
+              }
+            ]
+          }
+        ],
+        "layout": {
+          "x": 0,
+          "y": 5,
+          "width": 6,
+          "height": 4
+        }
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "area",
+        "title": "Instances by AMI family (Amazon Linux 2 vs 2023)",
+        "requests": [
+          {
+            "query": [
+              {
+                "response_format": "counts",
+                "q": "avg:aws.ec2.instance_count{program:aws-cloud-ops} by {ami_family}",
+                "aggregator": "avg"
+              }
+            ]
+          }
+        ],
+        "layout": {
+          "x": 6,
+          "y": 5,
+          "width": 6,
+          "height": 4
+        }
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "timeseries",
+        "title": "RDS minor upgrade duration and blue/green switchover lag",
+        "requests": [
+          {
+            "query": [
+              {
+                "response_format": "counts",
+                "q": "avg:aws.rds.blue_green_switchover_cutover_duration{program:aws-cloud-ops} by {db_instance_identifier}",
+                "aggregator": "avg"
+              }
+            ]
+          },
+          {
+            "query": [
+              {
+                "response_format": "counts",
+                "q": "avg:aws.rds.replica_lag{program:aws-cloud-ops} by {db_instance_identifier}",
+                "aggregator": "max"
+              }
+            ]
+          }
+        ],
+        "layout": {
+          "x": 0,
+          "y": 9,
+          "width": 6,
+          "height": 4
+        }
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "heatmap",
+        "title": "SSM Run Command / patch execution latency",
+        "requests": [
+          {
+            "query": [
+              {
+                "response_format": "counts",
+                "q": "avg:aws.ssm.command_completion_time{program:aws-cloud-ops} by {command}",
+                "aggregator": "avg"
+              }
+            ]
+          }
+        ],
+        "layout": {
+          "x": 6,
+          "y": 9,
+          "width": 6,
+          "height": 4
+        }
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "table",
+        "title": "EOL verdict per host (from the cloudops scanner gauge feed)",
+        "requests": [
+          {
+            "queries": [
+              {
+                "query": "cloudops.eol.verdict{program:aws-cloud-ops}",
+                "name": "host"
+              },
+              {
+                "query": "cloudops.eol.days_remaining{program:aws-cloud-ops}",
+                "name": "days"
+              }
+            ],
+            "columns": [
+              {
+                "cell": {
+                  "label": "host",
+                  "value": "host"
+                },
+                "name": "Host"
+              },
+              {
+                "cell": {
+                  "label": "days",
+                  "value": "days"
+                },
+                "name": "Days remaining"
+              }
+            ],
+            "has_title": true
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 13,
+        "width": 7,
+        "height": 4
+      }
+    },
+    {
+      "id": null,
+      "definition": {
+        "type": "event_timeline",
+        "title": "Recent change events (deploy / patch / drift)",
+        "filters": [
+          "tags:program:aws-cloud-ops"
+        ]
+      },
+      "layout": {
+        "x": 7,
+        "y": 13,
+        "width": 5,
+        "height": 4
+      }
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_labels": [
+        "dev",
+        "prod"
+      ],
+      "query": "env:*",
+      "default": "prod"
+    },
+    {
+      "name": "region",
+      "prefix": "region",
+      "available_labels": [
+        "eu-west-1"
+      ],
+      "query": "region:*",
+      "default": "eu-west-1"
+    }
+  ],
+  "notify_list": [],
+  "_source": "https://github.com/ar33s08/aws-cloud-ops (reference configuration; not deployed)"
+}

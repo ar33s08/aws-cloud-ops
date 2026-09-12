@@ -1,0 +1,99 @@
+# This file is the Atlantis server-side repository configuration for the
+# aws-cloud-ops estate (repos.yaml style: it is mounted into the Atlantis
+# container at /etc/atlantis/repos.yaml and referenced with
+# --repo-config=/etc/atlantis/repos.yaml). It is a policy statement, not a
+# deployment: Atlantis is the gate that turns "terraform plan" and "terraform
+# apply" into a reviewed, logged event on a pull request, and this file says
+# which repositories may use the gate and what a change must satisfy before
+# it may pass through it.
+#
+# For an operations team the value is control without friction: the engineer
+# who wants a change plans it and sees the diff in the pull request within
+# seconds, but the state file of the estate only moves after another human
+# said yes. No console edits, no laptop applies against production.
+
+# ---------------------------------------------------------------------------
+# Repository allow list
+# ---------------------------------------------------------------------------
+# Only the repositories matched below are registered with Atlantis; every
+# other webhook delivery is ignored. The pattern style is
+# "vcs host / organisation / repository regexp", so the two entries below
+# admit the aws-cloud-ops repository on every branch of the organisation
+# while refusing everything else.
+repos:
+  - id: github:/^ar33s08/aws-cloud-ops$/
+    # Plan runs on every pull request; apply needs the requirements below.
+    apply_requirements:
+      - scope: mergeable
+        description: >-
+          The pull request must be mergeable: every required status check of
+          the repository (the "ci" workflow among them) has to have passed,
+          and the branch must be current against main. An apply against a
+          red or stale pull request is an unreviewed apply wearing a review's
+          clothes.
+      - scope: approved
+        description: >-
+          At least one review approval from someone other than the author is
+          required. Infrastructure changes are peer-reviewed code changes;
+          the second pair of eyes is the control that catches the "obviously
+          safe" destroy before it removes a database.
+      - scope: undocumented
+        description: >-
+          Atlantis rejects applies requested by a pull request whose
+          requirements it cannot evaluate, rather than defaulting to open.
+          Fail closed, always.
+
+    # The environment map: which directory is which workspace, so that a
+    # single Atlantis instance serves every environment of the estate from
+    # one repository, and an approval on dev can never imply an approval on
+    # prod.
+    projects:
+      - branch: ^main$
+        directory: infra/envs/dev
+        workspace: default
+      - branch: ^main$
+        directory: infra/envs/prod
+        workspace: default
+        # Production applies are additionally limited to the people who own
+        # the pager for this estate; Atlantis enforces the team policy names
+        # set on the application side.
+        apply_requirements:
+          - scope: project_maintainers
+
+    # The plan stage: no backend access is needed to plan against this estate
+    # beyond the backend read, and every plan is rendered into the pull
+    # request so the diff is the artifact of record. The pre-workflow hook
+    # pins the module registry to this repository at the pull request's own
+    # revision, which is what makes "what will be applied" equal to "what is
+    # under review".
+    plan_requirements:
+      - scope: project_maintainers
+
+    pre_workflow:
+      stage: plan
+      steps:
+        - run: terraform fmt -check -recursive ../../
+        - run: terraform init -backend=false -input=false -upgrade
+
+    workflow:
+      plan:
+        steps:
+          - init
+          - plan
+      apply:
+        steps:
+          - apply
+
+    delete_source_branch_on_merge_enabled: true
+    enable_draft_prs: false
+
+  # Staging fork of the estate used for Atlantis upgrades drills: plan-only,
+  # so a broken Atlantis configuration can be rehearsed without any chance of
+  # touching state.
+  - id: github:/^ar33s08/aws-cloud-ops-drills$/
+    apply_requirements:
+      - scope: project_maintainers
+    policy:
+      plan_enabled: true
+      apply_enabled: false
+      delete_enabled: false

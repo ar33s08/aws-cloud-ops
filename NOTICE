@@ -1,0 +1,27 @@
+aws-cloud-ops
+Copyright 2026 Arees Manesia
+
+This product includes software developed by the above-named author, and it
+is distributed under the Apache License, Version 2.0. See LICENSE for the
+full text of the license.
+
+This product makes reference to the following trademarks of third parties,
+which are the property of their respective owners and are used for the
+identification of the products they name only:
+
+* Amazon Web Services, Amazon, AWS, Amazon Elastic Compute Cloud, Amazon
+  Relational Database Service, Amazon ElastiCache, Amazon Elastic Kubernetes
+  Service, Amazon Systems Manager, and Amazon Linux are trademarks of
+  Amazon Web Services, Inc. in the United States and other jurisdictions;
+  none are affiliated with this repository and none endorse it.
+* Kubernetes is a registered trademark of The Linux Foundation.
+* Terraform and Hashicorp are trademarks of Hashicorp, Inc.
+* DataDog is a trademark of DataDog, Inc.
+* Redis is a trademark of Redis Ltd.; Valkey is a trademark of the Linux
+  Foundation (the Valkey project).
+* Atlantis is a project of Runatlantis under the Apache License 2.0.
+
+The dates and the lifecycle statements in data/eol-catalog.json are
+transcribed from the public announcements of the above-named vendors on the
+dates named in that file; the vendors are the authority of their own
+lifecycles, and the catalog is refreshed from their pages, not invented.

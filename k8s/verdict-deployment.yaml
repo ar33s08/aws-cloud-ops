@@ -1,0 +1,247 @@
+# This file is the reference Deployment, Service, autoscaler, and disruption
+# budget for the day-2 report endpoint of the aws-cloud-ops estate: the
+# small HTTP service that publishes the latest scan verdict (the one the
+# runbooks and the dashboards read). It matters to an operations team because
+# the endpoint that reports on the estate has to be the most boring, most
+# carefully upgraded part of it: it rolls without dropping a single scrape,
+# it is drained politely, and it cannot be evicted into an outage by an
+# opportunistic cluster autoscaler.
+#
+# The probes follow the EKS 1.2x HTTP health-check convention exactly: one
+# startup probe that absorbs the cold start, a liveness probe that restarts a
+# wedged process, and a readiness probe that only ever moves the pod in and
+# out of the Service endpoints. Each probe declares its timing (delay,
+# period, timeouts, thresholds) rather than inheriting defaults, because
+# probe defaults are a policy someone else chose for someone else's service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudops-verdict-server
+  namespace: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: verdict-server
+    program: aws-cloud-ops
+  annotations:
+    cloudops.aws/description: >-
+      Read-only publisher of the latest scan verdict for the reference
+      fleet; consumed by the dashboards and by the upgrade runbooks.
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 600
+  minReadySeconds: 10
+  paused: false
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aws-cloud-ops
+      app.kubernetes.io/component: verdict-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # The day-2 rule: a verdict that is briefly unavailable during a roll
+      # is a blind spot in the runbook at exactly the moment the runbook is
+      # most likely to be open. Always at least the full complement ready.
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aws-cloud-ops
+        app.kubernetes.io/component: verdict-server
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        supplementalGroups: [65532]
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seLinuxOptions:
+          level: s0
+          role: unconfined_r
+          type: container_t
+          user: system_u
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: verdict-server
+      containers:
+        - name: verdict
+          image: ghcr.io/ar33s08/aws-cloud-ops:1.0.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - cloudops
+          args:
+            - report
+            - --serve
+            - --listen
+            - 0.0.0.0:8080
+            - --verdict-dir
+            - /var/run/cloudops
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # The startup gate owns the cold-start window: it may take two
+          # minutes for a cold image to unpack and read the verdict, and a
+          # container still passing its startup gate is never killed or
+          # pulled from the endpoints by the other two probes.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFileSystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: verdict
+              mountPath: /var/run/cloudops
+              readOnly: true
+      volumes:
+        - name: verdict
+          configMap:
+            name: cloudops-last-verdict
+            defaultMode: 0444
+            optional: true
+---
+# The Service that fronts the deployment. A headless variant would be wrong
+# here: the dashboards scrape through the cluster DNS name once per verdict,
+# and they want the kube-proxy path, not pod discovery.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudops-verdict
+  namespace: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: verdict-server
+    program: aws-cloud-ops
+spec:
+  type: ClusterIp
+  selector:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: verdict-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  ipFamilyPolicy: SingleStack
+  ipFamilies:
+    - IPv4
+  internalTrafficPolicy: Cluster
+  sessionAffinity: None
+---
+# The autoscaler: autoscaling/v2, CPU target 70 percent of request. The
+# floor of two replicas is not a suggestion but the minimum the topology
+# spread and the maxUnavailable-zero rollout need to stay honest; the scale
+# down is deliberately slow (five-minute stabilization) because a verdict
+# server that thrashes under scrape bursts reads as an unreliable witness.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cloudops-verdict
+  namespace: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: verdict-server
+    program: aws-cloud-ops
+spec:
+  scaleTargetRef:
+    apiGroup: apps
+    kind: Deployment
+    name: cloudops-verdict-server
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+        - type: Percent
+          value: 25
+          periodSeconds: 180
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
+---
+# The disruption budget: at least one replica stays awake through every
+# voluntary disruption. The autoscaler and the node updater will obey this
+# budget even when nobody is watching; that is the entire point of a budget.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cloudops-verdict
+  namespace: cloudops-day2
+  labels:
+    app.kubernetes.io/name: aws-cloud-ops
+    app.kubernetes.io/component: verdict-server
+    program: aws-cloud-ops
+spec:
+  # maxUnavailable only (never paired with minAvailable): the Deployment is
+  # the scaling authority for the replica count, and a budget that hard-codes
+  # a floor would fight it on every scale-up event.
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aws-cloud-ops
+      app.kubernetes.io/component: verdict-server

@@ -1,0 +1,38 @@
+{
+  "_about": "The patch program of the reference estate. The baselines mirror AWS Systems Manager Patch Manager objects (one OS class, its approval rules, its compliance severity). scripts/patch-baseline-register.sh refuses to register a baseline whose approved_by/approved_on pair is missing: an unapproved baseline must never reach the fleet. Sample configuration data; the dates are the real calendar.",
+  "baselines": [
+    {"name": "AL2023-SECURITY-30D", "product_family": "Amazon Linux 2023",
+     "description": "Amazon Linux 2023, security and advisory updates, held 30 days for bake",
+     "compliance_severity": "CRITICAL",
+     "approved_by": "change advisory board 2026-07-15", "approved_on": "2026-07-15",
+     "rules": [
+       {"patch_set": "OS", "classify": "Security,Security-Mandatory,Recommendation",
+        "approve_after_days": 30,
+        "reject_packages": ["kernel-livepatch (pinned by the platform team until the 2026-Q4 review)",
+                             "aws-cfn-init-script (pinned to the image build)"]}]},
+    {"name": "AL2-MIGRATE-ONLY", "product_family": "Amazon Linux 2",
+     "description": "End-of-life image class: updates are installed only to keep the agent alive; the migration to 2023 supersedes every other action",
+     "compliance_severity": "MEDIUM",
+     "approved_by": "change advisory board 2026-08-01", "approved_on": "2026-08-01",
+     "rules": [
+       {"patch_set": "OS", "classify": "Security-Mandatory",
+        "approve_after_days": 0,
+        "reject_packages": []}]},
+    {"name": "DB-AGENT-SECURITY", "product_family": "Amazon Linux 2023 Database",
+     "description": "The database hosts: agent and monitoring components only, 14-day bake",
+     "compliance_severity": "HIGH",
+     "approved_by": "change advisory board 2026-07-15", "approved_on": "2026-07-15",
+     "rules": [
+       {"patch_set": "AGENT", "classify": "Security,Recommended",
+        "approve_after_days": 14,
+        "reject_packages": ["datadog-agent (pinned to the observability standard until the platform upgrade)"]}]}
+  ],
+  "groups": [
+    {"name": "PROD-CANARY", "baseline_names": ["AL2023-SECURITY-30D", "DB-AGENT-SECURITY"],
+     "schedule": "cron(0 9 ? WED 2)", "cutoff_hours": 3, "overlap_duration_hours": 1},
+    {"name": "PROD-STANDARD", "baseline_names": ["AL2023-SECURITY-30D", "DB-AGENT-SECURITY"],
+     "schedule": "cron(0 10 ? THU *)", "cutoff_hours": 4, "overlap_duration_hours": 1},
+    {"name": "PROD-CRITICAL", "baseline_names": ["AL2023-SECURITY-30D"],
+     "schedule": "cron(0 11 ? SUN *)", "cutoff_hours": 2, "overlap_duration_hours": 0}
+  ]
+}

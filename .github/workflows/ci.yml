@@ -1,0 +1,175 @@
+# This workflow is the continuous integration pipeline of the repository. It
+# runs on every push to the main branch and on every pull request against it,
+# so that a change can never reach the trunk without passing the same gates
+# that an operator runs locally with "make ci" (see the Makefile). The three
+# jobs mirror those gates: shellcheck over the shell automation, the
+# stdlib-only unittest suite over the Python toolkit, and terraform fmt plus
+# terraform validate over the modules and the environments.
+#
+# The pipeline asks for nothing but read access to the repository contents.
+# It has no AWS credentials, it deploys nothing, and it never applies
+# infrastructure: plan and apply belong to Atlantis and to a reviewer (see
+# atlantis.yaml).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: every job of this workflow reads the repository and writes
+# nothing back. No pull request comments, no status writes, no secrets.
+permissions:
+  contents: read
+
+# A newer push to the same branch or the same pull request supersedes the
+# run that is still in flight; cancelling the old one keeps the queue short
+# and keeps the runner bill honest.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+  TF_IN_PLUGIN_DIRS: ${{ github.workspace }}/.tf-plugin-cache
+
+jobs:
+  # The lint job verifies that the shell automation under scripts/ and hooks/
+  # still parses under shellcheck and that every Python module still compiles.
+  # For an operations team this is the cheapest gate there is: a script with an
+  # unquoted variable or a module with a syntax error is a script that fails at
+  # 02:00 during a patch window, in front of an incident, rather than here, in
+  # front of a reviewer. It runs on both Linux and macOS because the scripts
+  # are expected to run on both (macOS ships bash 3.2 and BSD userland).
+  lint:
+    name: lint (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Check out the candidate revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install shellcheck (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -eu
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+
+      - name: Install shellcheck (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -eu
+          brew install shellcheck
+
+      - name: Run the linters (make lint)
+        run: make lint
+
+  # The test job verifies that the behaviour of the toolkit is still the
+  # behaviour its tests describe: version comparison against the end-of-life
+  # catalog, patch compliance scoring, and drift detection between the live
+  # inventory and the state file. It runs the suite across the whole supported
+  # Python range, because the toolkit is installed on engineer laptops and on
+  # runner images that do not agree on an interpreter, and a version-dependent
+  # bug in the classification logic would otherwise surface as a wrong patch
+  # queue. The suite is stdlib-only unittest and needs no AWS credentials.
+  test:
+    name: test (python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.11", "3.12"]
+    steps:
+      - name: Check out the candidate revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-files: pyproject.toml
+
+      - name: Create the standard environment (make venv)
+        run: make venv
+
+      - name: Run the test suite
+        run: |
+          set -eu
+          mkdir -p reports
+          python3 -m unittest discover -s tests -p "test_*.py" -v 2>&1 \
+            | tee reports/test-results-py${{ matrix.python }}.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload the test results (only on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-py${{ matrix.python }}-${{ github.run-id }}
+          path: reports/test-results-py${{ matrix.python }}.txt
+          if-no-files: warn
+          retention-days: 30
+
+  # The terraform job verifies that the modules and the environments are still
+  # well-formed configuration: formatted, parseable, with resolvable module
+  # calls, provider schemas, and variable and output references. It matters to
+  # an operations team because a malformed root module is discovered by
+  # Atlantis, on a pull request, at the worst possible moment; finding the same
+  # error here, in a few seconds, with no backend touched, is what keeps the
+  # review queue moving. Init runs with the backend disabled and no input, so
+  # the job needs no S3 state bucket, no credentials, and no lock.
+  terraform:
+    name: terraform (env ${{ matrix.env }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, prod]
+    steps:
+      - name: Check out the candidate revision
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2.0.0
+        with:
+          terraform-version: "~> 1.5"
+          log-level: trace
+
+      - name: Format the sources
+        working-directory: .
+        run: terraform fmt -check -recursive infra/
+
+      - name: Init and validate the environment
+        working-directory: infra/envs/${{ matrix.env }}
+        run: |
+          set -eu
+          if ! ls *.tf >/dev/null 2>&1; then
+            echo "no *.tf files under infra/envs/${{ matrix.env }}; nothing to validate"
+            exit 0
+          fi
+          terraform init -backend=false -input=false -upgrade -plugin-cache-dir=.tf-cache
+          terraform validate
+
+      - name: Cache the provider plugin cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tf-cache
+            ~/.terraform.d/plugins
+          key: tf-${{ runner.os }}-${{ hashFiles('**/.terraform.lock', 'infra/**/.terraform.lock') }}
+          restore-keys: tf-${{ runner.os }}-
