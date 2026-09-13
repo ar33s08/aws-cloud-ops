@@ -100,8 +100,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-          cache: pip
-          cache-dependency-files: pyproject.toml
+          # The core of the package is the standard library on purpose, so there
+          # are no third-party dependencies to cache and no dependency file to
+          # name: the cache step would only add a failure mode to a build that
+          # installs nothing.
+          cache: false
 
       - name: Create the standard environment (make venv)
         run: make venv
@@ -162,7 +165,12 @@ jobs:
             echo "no *.tf files under infra/envs/${{ matrix.env }}; nothing to validate"
             exit 0
           fi
-          terraform init -backend=false -input=false -upgrade -plugin-cache-dir=.tf-cache
+          # The plugin cache is steered through the environment variable rather
+          # than the flag of init: the setup action of Terraform wraps the binary,
+          # and the flag is not defined on every supported version, while the
+          # variable is honoured by all of them.
+          export TF_PLUGIN_CACHE_DIR="${{ github.workspace }}/infra/.tf-cache"
+          terraform init -backend=false -input=false -upgrade
           terraform validate
 
       - name: Cache the provider plugin cache

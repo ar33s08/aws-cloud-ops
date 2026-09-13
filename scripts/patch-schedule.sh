@@ -274,10 +274,14 @@ main() {
     log info "patching window plan (definition: ${DEFINITIONS_JSON}, region: ${AWS_REGION}, floor: ${FLOOR})"
 
     # --- ring 1: the canary ------------------------------------------------------
-    local canary_row standard_row critical_row
+    local canary_row
     canary_row=$(load_ring_schedule "$DEFINITIONS_JSON" canary) || die 3 "the canary ring is not defined"
-    standard_row=$(load_ring_schedule "$DEFINITIONS_JSON" standard) || die 3 "the standard ring is not defined"
-    critical_row=$(load_ring_schedule "$DEFINITIONS_JSON" critical) || die 3 "the critical ring is not defined"
+    # The two later rings are validated here and not captured: the execution of
+    # each ring resolves its own schedule at the moment that it is the ring of
+    # the hour, and a missing definition must fail the plan before the canary of
+    # the window has started to run.
+    load_ring_schedule "$DEFINITIONS_JSON" standard >/dev/null || die 3 "the standard ring is not defined"
+    load_ring_schedule "$DEFINITIONS_JSON" critical >/dev/null || die 3 "the critical ring is not defined"
 
     local canary_name canary_schedule canary_group
     canary_name=${canary_row%%|*}

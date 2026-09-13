@@ -59,9 +59,15 @@ def check_markdown(docs, targets, subs, scripts) -> list[tuple[str, str, str]]:
         # commands a reader can copy; prose 'make it better' is not a violation.
         code = "\n".join(re.findall(r"(?ms)^```.*?^```|`[^`\n]+`", text))
         for token in set(re.findall(r"\bmake\s+([a-zA-Z][a-zA-Z_-]{1,20})\b", code)):
-            if token not in targets:
-                sample = _context(text, "make " + token)
-                violations.append((rel, "make " + token, sample))
+            if token in targets:
+                continue
+            # 'apt-get install ... make git curl unzip' is a list of packages that
+            # happens to follow the word make; it is not a make invocation. Only a
+            # citation where make stands as the program itself counts.
+            if re.search(r"(install|apt-get|yum|brew)\b[^`\n]*\bmake\s+" + token + r"\b", code):
+                continue
+            sample = _context(text, "make " + token)
+            violations.append((rel, "make " + token, sample))
         for token in set(re.findall(r"\bcloudops\s+([a-z][a-z-]{2,15})\b", code)):
             if token in PROSE_AFTER_CLOUDOPS or token.startswith("--"):
                 continue
@@ -88,7 +94,8 @@ def _context(text: str, needle: str, span: int = 48) -> str:
 
 def main(argv: list[str]) -> int:
     docs = sorted(p for p in ROOT.rglob("*.md")
-                  if "/.git/" not in str(p) and "/.venv/" not in str(p))
+                  if "/.git/" not in str(p) and "/.venv/" not in str(p)
+                  and "/.terraform/" not in str(p) and "/.tf-cache/" not in str(p))
     targets, subs, scripts = make_targets(), cli_subcommands(), script_names()
     violations = check_markdown(docs, targets, subs, scripts)
     for path, cite, sample in violations:

@@ -52,7 +52,6 @@ install_err_trap
 # ---------------------------------------------------------------------------
 readonly CMD_ASG_GET_INSTANCE_HEALTH='aws autoscaling describe-instance-health-details'
 readonly CMD_ASG_PUT_INSTANCE_STATE='aws autoscaling put-instance-states'
-readonly CMD_EC2_DESCRIBE_INSTANCE='aws ec2 describe-instances'
 
 # ---------------------------------------------------------------------------
 # Defaults (the safe ones: dry-run off, timeout 300 seconds, poll 5 seconds)

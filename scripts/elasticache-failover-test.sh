@@ -144,7 +144,7 @@ group_state_is_available() {
 describe_group() {
     # Purpose: fetch the describe document of the group into $1.
     local out=$1
-    retry 3 2 $CMD_ELASTICACHE_DESCREPLICATION \
+    retry 3 2 "$CMD_ELASTICACHE_DESCREPLICATION" \
         --replication-group-id "$REPLICATION_GROUP_ID" \
         --show-global-replication-groups \
         --region "$AWS_REGION" --output json >"$out"
@@ -171,10 +171,9 @@ main() {
         [ "$DRY_RUN" -eq 1 ] || die "the DescribeReplicationGroups call failed for ${REPLICATION_GROUP_ID}"
         log warn "dry run: the group could not be described; the plan is printed without the precondition check"
     elif [ -s "$pre_json" ]; then
-        local multi_az auto_failover node_count
+        local multi_az auto_failover
         multi_az=$(json_query "$pre_json" "doc['ReplicationGroups'][0]['MultiAZEnabled']")
         auto_failover=$(json_query "$pre_json" "doc['ReplicationGroups'][0]['AutomaticFailoverEnabled']")
-        node_count=$(json_query "$pre_json" "[n['CacheClusterId'] for n in doc['ReplicationGroups'][0]['GlobalReplicationGroupDetails'] or []] or len(doc['ReplicationGroups'][0]['NodeGroups'] or doc['ReplicationGroups'][0].get('CacheClusters',[]) or [])")
         log info "preconditions of ${REPLICATION_GROUP_ID}: Multi-AZ ${multi_az:-unknown}, automatic failover ${auto_failover:-unknown}"
         if [ "${multi_az:-false}" != "true" ]; then
             err "the group ${REPLICATION_GROUP_ID} is not Multi-AZ enabled: there is no standby to promote and the drill will measure a real outage"
@@ -206,7 +205,6 @@ main() {
     fi
 
     # Wait for the group to be available again and measure the elapsed time.
-    local poll_json="${WORK_DIR}/poll.json"
     local failover_seconds=0
     if poll_until "replication group ${REPLICATION_GROUP_ID} to report 'available'" \
             "$TIMEOUT_SECONDS" "$POLL_INTERVAL_SECONDS" \

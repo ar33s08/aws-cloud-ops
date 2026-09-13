@@ -37,7 +37,13 @@ test:  # run the test suite (stdlib-only; no network, no AWS credentials needed)
 
 lint: lint-shell lint-python lint-docs  # run all linters that are installed
 lint-shell:
-	$(if $(SHELLCHECK), find scripts hooks -type f -name '*.sh' -exec $(SHELLCHECK) -x {} +, \
+	# The gate of the style is the error and the warning classes; the info and
+	# style classes of shellcheck carry the auditable word-splitting of the
+	# command constants (a deliberate design, see the header of scripts/lib),
+	# and a newer shellcheck on one runner may promote a finding across the
+	# threshold of a severity, which must not break a candidate that is clean
+	# of the two real classes.
+	$(if $(SHELLCHECK), find scripts hooks -type f -name '*.sh' -exec $(SHELLCHECK) -x --severity=warning {} +, \
 	  echo "shellcheck not installed; skipping" )
 lint-python:
 	$(if $(shell command -v ruff), ruff check cloudops tests, $(PYTHON) -m compileall cloudops)

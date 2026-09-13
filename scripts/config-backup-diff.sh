@@ -58,7 +58,6 @@ install_err_trap
 readonly CMD_EC2_DESCRIBE_SECURITY_GROUPS='aws ec2 describe-security-groups'
 readonly CMD_EC2_DESCRIBE_NETWORK_ACLS='aws ec2 describe-network-acls'
 readonly CMD_IAM_LIST_ATTACHED_POLICIES='aws iam list-role-policies'
-readonly CMD_IAM_GET_ROLE_POLICY='aws iam get-role-policy'
 readonly CMD_RDS_DESCRIBE_PARAMETER_GROUPS='aws rds describe-db-parameter-groups'
 readonly CMD_KMS_LIST_ALIASES='aws kms list-aliases'
 readonly CMD_S3_GET_BUCKET_VERSIONING='aws s3api get-bucket-versioning'
@@ -309,11 +308,10 @@ inspect_document_family() {
     if ! export_configuration_document "$name" "$@"; then
         die "the family '${name}' could not be exported; the backup is incomplete and the diff of this run cannot be trusted"
     fi
-    local line status=0
+    local line
     if line=$(compare_document_against_previous "$name"); then
         log info "'${name}': unchanged since the previous backup (${line})"
     else
-        status=$?
         log warn "'${name}': CHANGED since the previous backup (${line})"
         if [ -z "$TICKET" ]; then
             CHANGED_WITHOUT_TICKET=1
