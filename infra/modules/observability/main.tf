@@ -106,13 +106,19 @@ resource "aws_sns_topic_policy" "alarms" {
 # caller owns; an empty list means the alarms stay in the CloudWatch console
 # alone, which is the posture of a sandbox.
 resource "aws_sns_topic_subscription" "operations" {
-  for_each = toset(var.notification_subscriptions)
+  # the for-each keys are built as a map, not through toset: the elements of the
+  # variable are objects, and the argument toset accepts is restricted to the
+  # primitive values of string, number, or bool. the address of the endpoint
+  # keys the set on its own, and it is unique by construction.
+  for_each = {
+    for sub in var.notification_subscriptions : sub.endpoint => sub
+  }
 
   topic_arn = aws_sns_topic.alarms.arn
   # The protocol of every member is validated in variables.tf so that the
   # service never sees a transport that the estate would not approve.
-  protocol = each.value["protocol"]
-  endpoint = each.value["endpoint"]
+  protocol = each.value.protocol
+  endpoint = each.value.endpoint
 
 }
 
@@ -121,7 +127,7 @@ resource "aws_sns_topic_subscription" "operations" {
 # ---------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "platform" {
-  for_each = toset(var.log_retentions)
+  for_each = var.log_retentions
 
   # One group per log family of the platform: the name of the group carries the
   # name of the family, and the retention is the policy of the caller. The prefix
