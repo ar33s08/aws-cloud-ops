@@ -75,7 +75,14 @@ jobs:
           brew install shellcheck
 
       - name: Run the linters (make lint)
-        run: make lint
+        run: |
+          set -eu
+          # The python lint and the document gate run on the interpreter of the
+          # virtual environment, so it is created here: on a bare runner the
+          # interpreter of the repository would not exist and the gate would die
+          # with 'not found' rather than with a finding.
+          make venv
+          make lint
 
   # The test job verifies that the behaviour of the toolkit is still the
   # behaviour its tests describe: version comparison against the end-of-life
@@ -101,10 +108,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           # The core of the package is the standard library on purpose, so there
-          # are no third-party dependencies to cache and no dependency file to
-          # name: the cache step would only add a failure mode to a build that
-          # installs nothing.
-          cache: false
+          # are no third-party dependencies to cache and the cache step is left
+          # at its default of off: the build installs nothing, and an attempt to
+          # cache an empty manifest only adds a failure mode.
 
       - name: Create the standard environment (make venv)
         run: make venv
@@ -168,8 +174,10 @@ jobs:
           # The plugin cache is steered through the environment variable rather
           # than the flag of init: the setup action of Terraform wraps the binary,
           # and the flag is not defined on every supported version, while the
-          # variable is honoured by all of them.
+          # variable is honoured by all of them. The directory is created first:
+          # the binary refuses to open a cache directory that does not exist.
           export TF_PLUGIN_CACHE_DIR="${{ github.workspace }}/infra/.tf-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
           terraform init -backend=false -input=false -upgrade
           terraform validate
 
